@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def add_numbers(a: int, b: int):\n    return str(a + b)\n",
+  "traceback": "FAILED test_buggy.py::test_add_numbers_returns_int - AssertionError: Expected int, got <class 'str'>",
+  "fix": "def add_numbers(a: int, b: int):\n    return a + b\n"
+}

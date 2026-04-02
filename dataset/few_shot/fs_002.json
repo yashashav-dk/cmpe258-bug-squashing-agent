@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def find_max(lst: list) -> int:\n    max_val = lst[0]\n    for x in lst:\n        if x < max_val:\n            max_val = x\n    return max_val\n",
+  "traceback": "FAILED test_buggy.py::test_find_max_basic - AssertionError: assert 1 == 9",
+  "fix": "def find_max(lst: list) -> int:\n    max_val = lst[0]\n    for x in lst:\n        if x > max_val:\n            max_val = x\n    return max_val\n"
+}

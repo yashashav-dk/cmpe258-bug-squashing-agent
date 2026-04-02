@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def absolute_value(n: int):\n    if n >= 0:\n        return n\n",
+  "traceback": "FAILED test_buggy.py::test_negative - AssertionError: assert None == 3",
+  "fix": "def absolute_value(n: int) -> int:\n    if n >= 0:\n        return n\n    return -n\n"
+}
