@@ -1,4 +1,5 @@
 # Autonomous Bug Squashing Agent System
+*(Targeting the Gemma 4 Good Kaggle Hackathon — Ollama & Future of Education Tracks)*
 
 **CMPE 258 — Deep Learning, Spring 2026 | San Jose State University**
 

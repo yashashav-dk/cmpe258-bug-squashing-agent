@@ -30,6 +30,9 @@ def get_model(model_name: str):
     elif model_name == "minimax":
         from models.minimax import MiniMaxModel
         return MiniMaxModel()
+    elif model_name == "gemma4":
+        from models.gemma4 import Gemma4Model
+        return Gemma4Model()
     else:
         raise ValueError(f"Unknown model: {model_name!r}. Choose from: gemini, qwen, minimax")
 
@@ -134,7 +137,7 @@ def run_case_interactive(case_id: str, model_name: str):
 def main():
     parser = argparse.ArgumentParser(description="Bug Squashing Agent Interactive CLI")
     parser.add_argument("--case", required=False, help="Case ID (e.g. case_001) or empty for REPL")
-    parser.add_argument("--model", default="gemini", choices=["gemini", "qwen", "minimax"])
+    parser.add_argument("--model", default="gemma4", choices=["gemini", "qwen", "minimax", "gemma4"])
     args = parser.parse_args()
     
     if args.case:
