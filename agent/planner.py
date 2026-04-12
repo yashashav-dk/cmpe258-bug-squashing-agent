@@ -1,88 +1,81 @@
 import json
 import os
+from typing import List, Dict, Any
 from agent.memory import Memory
 from models.base import BaseModel
+from agent.tools_impl import AGENT_TOOLS
 
-REQUIRED_FIELDS = {"file", "line_range", "root_cause", "proposed_fix"}
-
-PROMPT_TEMPLATE = """\
-You are an expert Python debugger. Your task is to analyze a buggy Python function and a failing pytest traceback, then output a JSON patch plan to fix the bug.
-
-## Few-Shot Examples
-{few_shot_block}
-
-## Current Task
-
-### Buggy Code
-```python
-{buggy_code}
-```
-
-### Failing Traceback
-```
-{traceback}
-```
-
-### Memory (previous attempts)
-{memory_summary}
-
-## Instructions
-- Respond with ONLY a valid JSON object — no explanation, no markdown fences.
-- The JSON must have exactly these fields:
-  - "file": always "buggy.py"
-  - "line_range": [start_line, end_line] (1-indexed, inclusive)
-  - "root_cause": short string explaining the bug
-  - "proposed_fix": complete replacement Python code for the given line range, with correct indentation
-- Do NOT repeat a fix that appears in the memory above.
-
-Respond now with only the JSON:
+SYSTEM_PROMPT = """\
+You are an autonomous expert Python debugging agent. Your goal is to investigate buggy code, write fixes, and ensure tests pass.
+You have access to tools that allow you to read files, edit files, and run bash commands (such as running pytest).
+Investigate the error, use tools to explore the codebase and apply a fix, and verify it with pytest.
+When the tests pass, output a summary of what you did and say 'RESOLVED'.
 """
 
-
-def _load_few_shots(few_shot_dir: str) -> str:
-    if not os.path.isdir(few_shot_dir):
-        return "(no few-shot examples available)"
-    examples = []
-    for fname in sorted(os.listdir(few_shot_dir)):
-        if not fname.endswith(".json"):
-            continue
-        with open(os.path.join(few_shot_dir, fname)) as f:
-            ex = json.load(f)
-        examples.append(
-            f"Buggy:\n```python\n{ex['buggy_code']}```\n"
-            f"Traceback: {ex['traceback']}\n"
-            f"Fix:\n```python\n{ex['fix']}```"
-        )
-    return "\n\n---\n\n".join(examples) if examples else "(no few-shot examples available)"
-
-
-def _validate_patch(patch: dict) -> None:
-    missing = REQUIRED_FIELDS - patch.keys()
-    if missing:
-        raise ValueError(f"Patch schema validation failed — missing fields: {missing}")
-    if not isinstance(patch["line_range"], list) or len(patch["line_range"]) != 2:
-        raise ValueError("Patch schema validation failed — line_range must be [int, int]")
-
-
 class Planner:
-    def __init__(self, model: BaseModel, few_shot_dir: str):
+    def __init__(self, model: BaseModel, few_shot_dir: str = "", max_steps: int = 15):
         self.model = model
-        self.few_shot_block = _load_few_shots(few_shot_dir)
+        self.max_steps = max_steps
+        self.history: List[Dict[str, Any]] = []
 
     def plan(self, buggy_code: str, traceback: str, memory: Memory) -> dict:
-        prompt = PROMPT_TEMPLATE.format(
-            few_shot_block=self.few_shot_block,
-            buggy_code=buggy_code,
-            traceback=traceback,
-            memory_summary=memory.get_summary(max_tokens=500),
-        )
-        response = self.model.complete(prompt)
-        text = response.text.strip()
+        """
+        Legacy entry point for compatibility if needed. It triggers the Autonomous loop.
+        In the new architecture, we prefer `run_autonomous_loop()`.
+        """
+        msg = f"Buggy Code:\n```python\n{buggy_code}\n```\nTraceback:\n{traceback}\nFix the bug."
+        self.run_autonomous_loop(msg)
+        # Mocking legacy patch response format
+        return {"file": "buggy.py", "line_range": [0,0], "root_cause": "Fixed autonomously", "proposed_fix": "Applied via tools"}
 
-        try:
-            patch = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"LLM returned invalid JSON: {e}\nRaw output: {text[:300]}")
+    def run_autonomous_loop(self, user_objective: str) -> str:
+        self.history.append({"role": "user", "content": user_objective})
+        
+        for step in range(self.max_steps):
+            response = self.model.chat(
+                messages=self.history,
+                tools=AGENT_TOOLS,
+                system_instruction=SYSTEM_PROMPT
+            )
+            
+            assistant_msg = {
+                "role": "assistant",
+                "content": response.text,
+            }
+            if response.tool_calls:
+                assistant_msg["tool_calls"] = response.tool_calls
+                
+            self.history.append(assistant_msg)
 
-        _validate_patch(patch)
-        return patch
+            if response.text:
+                print(f"[Agent]: {response.text}")
+                
+            if response.tool_calls:
+                for tool_call in response.tool_calls:
+                    name = tool_call["name"]
+                    args = tool_call["arguments"]
+                    
+                    print(f"  [Tool Call]: {name}({args})")
+                    
+                    tool_result = ""
+                    # Dispatch to corresponding python function
+                    for tool_fn in AGENT_TOOLS:
+                        if tool_fn.__name__ == name:
+                            try:
+                                tool_result = tool_fn(**args)
+                            except Exception as e:
+                                tool_result = f"Tool execution failed: {e}"
+                            break
+                    
+                    print(f"  [Tool Output]:\\n{str(tool_result)[:200]}...")
+                    self.history.append({
+                        "role": "tool",
+                        "name": name,
+                        "content": str(tool_result)
+                    })
+            else:
+                if "RESOLVED" in response.text or "All tests pass" in response.text:
+                    return response.text
+        
+        return "Max steps reached without resolving the bug."
+

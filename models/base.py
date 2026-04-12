@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
+from typing import List, Dict, Any, Optional
 
 @dataclass
 class ModelResponse:
@@ -8,12 +8,13 @@ class ModelResponse:
     input_tokens: int
     output_tokens: int
     latency_ms: float
+    tool_calls: Optional[List[Dict[str, Any]]] = None
 
 
 class BaseModel(ABC):
     @abstractmethod
-    def complete(self, prompt: str) -> ModelResponse:
-        """Send prompt to the LLM and return a ModelResponse."""
+    def chat(self, messages: List[Dict[str, Any]], tools: Optional[list] = None, system_instruction: str = "") -> ModelResponse:
+        """Send message history to the LLM and return a ModelResponse."""
 
     @abstractmethod
     def name(self) -> str:

@@ -52,3 +52,19 @@ class Memory:
         }
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
+
+    def consolidate_dream(self, history: list, model) -> str:
+        """
+        Similar to Claude-Code's 'Dream' system, this reviews the interaction history
+        to generate durable guidelines/learnings for this session.
+        """
+        dream_prompt = "Review the following agent tool-calling history and summarize key learnings in 3 sentences."
+        # Using a very basic format to send to the model
+        history_text = "\n".join([f"{msg.get('role')}: {msg.get('content', '...tool...')}" for msg in history])
+        messages = [
+            {"role": "system", "content": "You are a memory consolidation module. Extract durable learnings from the history."},
+            {"role": "user", "content": f"{dream_prompt}\n\nHistory:\n{history_text[-2000:]}"}
+        ]
+        response = model.chat(messages=messages)
+        print(f"\n[DREAM CONSOLIDATION]\n{response.text}\n")
+        return response.text
