@@ -7,6 +7,7 @@ MAX_MEMORY_TOKENS = 2000
 # Model
 GEMINI_MODEL = "gemini-2.0-pro"  # update to current available model if needed
 GEMMA4_MODEL = "gemma4:latest"
+QWEN_MODEL = "Qwen/Qwen2.5-72B-Instruct-Turbo"
 
 # Paths
 DATASET_ROOT = os.path.join(os.path.dirname(__file__), "dataset")
