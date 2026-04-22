@@ -64,8 +64,8 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 - [x] Per-case Memory with dead-end detection and token budget
 - [x] Structured JSON-lines logging (prompts, patches, verdicts, token counts, latency)
 - [x] Full unit test suite (21 tests, all passing)
-- [ ] Qwen-2.5 72B integration (next milestone)
-- [ ] MiniMax-M2.5 integration (next milestone)
+- [x] Qwen-2.5 72B integration (next milestone)
+- [x] MiniMax-M2.5 integration (next milestone)
 - [ ] Remaining 45 bug cases
 - [ ] Web UI
 - [ ] Docker sandboxing
@@ -73,12 +73,10 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 
 ## Next Steps
 
-1. Wire Qwen-2.5 72B via Together AI (`models/qwen.py`)
-2. Wire MiniMax-M2.5 (`models/minimax.py`)
-3. Expand dataset to 50 cases across all 3 tiers
-4. Build Web UI (upload files, select model, observe agent reasoning in real time)
-5. Add Docker sandbox for safe execution
-6. Run full evaluation and report metrics (pass rate, latency p50/p90/p99, cost/fix, retry depth)
+1.  Expand dataset to 50 cases across all 3 tiers
+2.  Build Web UI (upload files, select model, observe agent reasoning in real time)
+3.  Add Docker sandbox for safe execution
+4.  Run full evaluation and report metrics (pass rate, latency p50/p90/p99, cost/fix, retry depth)
 
 ## Setup
 

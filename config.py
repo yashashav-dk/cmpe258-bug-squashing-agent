@@ -7,6 +7,8 @@ MAX_MEMORY_TOKENS = 2000
 # Model
 GEMINI_MODEL = "gemini-2.0-flash"  # gemini-2.0-flash is available; change to gemini-1.5-pro if needed
 GEMMA4_MODEL = "gemma4:latest"
+QWEN_MODEL = "Qwen/Qwen2.5-72B-Instruct-Turbo"
+MINIMAX_MODEL = "MiniMaxAI/MiniMax-M2.5"
 
 # Paths
 DATASET_ROOT = os.path.join(os.path.dirname(__file__), "dataset")
