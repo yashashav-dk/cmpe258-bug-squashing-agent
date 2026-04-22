@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def sum_up_to(n: int) -> int:\n    total = 0\n    for i in range(1, n):\n        total += i\n    return total\n",
+  "traceback": "FAILED test_buggy.py::test_sum_5 - AssertionError: assert 10 == 15\nFAILED test_buggy.py::test_sum_1 - AssertionError: assert 0 == 1",
+  "fix": "def sum_up_to(n: int) -> int:\n    total = 0\n    for i in range(1, n + 1):\n        total += i\n    return total\n"
+}

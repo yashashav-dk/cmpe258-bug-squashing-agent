@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bug Squashing Agent — CMPE 258</title>
+  <meta name="description" content="Autonomous AI bug-squashing agent powered by Gemini, Qwen, MiniMax, and Gemma4. Watches the agent reason in real time.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🤖</span>
+        <div>
+          <div class="logo-title">Bug Squashing Agent</div>
+          <div class="logo-sub">CMPE 258 · Gemma 4 Good · Ollama Track</div>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-green" id="status-badge">Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Control Panel -->
+    <section class="card control-panel">
+      <h2 class="card-title">🎯 Configure Run</h2>
+
+      <div class="form-grid">
+        <!-- Model selector -->
+        <div class="form-group">
+          <label class="form-label" for="model-select">Model</label>
+          <div class="select-wrap">
+            <select id="model-select" class="select">
+              <option value="gemini">Gemini 2.0 Flash</option>
+              <option value="gemma4">Gemma 4 (Ollama)</option>
+              <option value="qwen">Qwen-2.5 72B</option>
+              <option value="minimax">MiniMax-M2.5</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Mode selector -->
+        <div class="form-group">
+          <label class="form-label">Input Mode</label>
+          <div class="tab-group" role="tablist">
+            <button id="tab-case" class="tab tab-active" role="tab" onclick="switchMode('case')">Built-in Case</button>
+            <button id="tab-upload" class="tab" role="tab" onclick="switchMode('upload')">Upload File</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case picker -->
+      <div id="mode-case" class="mode-panel">
+        <div class="form-group">
+          <label class="form-label" for="case-select">Bug Case</label>
+          <div class="select-wrap">
+            <select id="case-select" class="select">
+              <option value="">Loading cases…</option>
+            </select>
+          </div>
+        </div>
+        <div id="case-preview" class="code-preview hidden">
+          <div class="code-preview-label">buggy.py</div>
+          <pre id="case-code" class="code-block"></pre>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div id="mode-upload" class="mode-panel hidden">
+        <div class="form-group">
+          <label class="form-label" for="file-upload">Upload buggy.py</label>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="file-upload" accept=".py" class="file-input" onchange="handleFileSelect(event)">
+            <div class="upload-icon">📂</div>
+            <div class="upload-text">Drop a <strong>.py</strong> file or click to browse</div>
+            <div class="upload-hint" id="upload-hint">No file selected</div>
+          </div>
+        </div>
+        <div id="upload-preview" class="code-preview hidden">
+          <div class="code-preview-label">Uploaded file</div>
+          <pre id="upload-code" class="code-block"></pre>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="run-btn" class="btn btn-primary" onclick="startRun()">
+          <span class="btn-icon">▶</span> Run Agent
+        </button>
+        <button class="btn btn-ghost" onclick="clearOutput()">Clear Output</button>
+      </div>
+    </section>
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat">
+        <div class="stat-value" id="stat-steps">—</div>
+        <div class="stat-label">Steps</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-tokens">—</div>
+        <div class="stat-label">Tokens</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-latency">—</div>
+        <div class="stat-label">Latency</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-status">—</div>
+        <div class="stat-label">Result</div>
+      </div>
+    </div>
+
+    <!-- Output stream -->
+    <section class="card output-panel">
+      <div class="output-header">
+        <h2 class="card-title">🔬 Agent Reasoning Stream</h2>
+        <div id="typing-indicator" class="typing-indicator hidden">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div id="output-stream" class="output-stream">
+        <div class="empty-state">
+          <div class="empty-icon">🤖</div>
+          <div class="empty-title">Agent Idle</div>
+          <div class="empty-sub">Select a case and model, then click <strong>Run Agent</strong> to watch the autonomous debugging loop in real time.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dream consolidation -->
+    <section class="card dream-panel hidden" id="dream-panel">
+      <h2 class="card-title">💭 Dream Consolidation</h2>
+      <p class="dream-subtitle">Key learnings extracted from this debugging session</p>
+      <div id="dream-content" class="dream-content"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>CMPE 258 · Deep Learning · Spring 2026 · San Jose State University</span>
+    <span class="footer-sep">·</span>
+    <span>Pranav Trivedi · Yashashav DK · Saransh Soni</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

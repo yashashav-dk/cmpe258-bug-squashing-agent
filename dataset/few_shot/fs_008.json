@@ -1,0 +1,5 @@
+{
+  "buggy_code": "class Dog(Animal):\n    def __init__(self, name: str, breed: str):\n        self.breed = breed\n\n    def speak(self) -> str:\n        return f\"{self.name} barks\"\n",
+  "traceback": "FAILED test_buggy.py::test_dog_speak - AttributeError: 'Dog' object has no attribute 'name'",
+  "fix": "class Dog(Animal):\n    def __init__(self, name: str, breed: str):\n        super().__init__(name)\n        self.breed = breed\n\n    def speak(self) -> str:\n        return f\"{self.name} barks\"\n"
+}

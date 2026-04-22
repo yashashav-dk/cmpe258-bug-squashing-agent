@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def append_item(item, lst=[]):\n    lst.append(item)\n    return lst\n",
+  "traceback": "FAILED test_buggy.py::test_independent_calls - AssertionError: Expected [1], got [1, 2]",
+  "fix": "def append_item(item, lst=None):\n    if lst is None:\n        lst = []\n    lst.append(item)\n    return lst\n"
+}

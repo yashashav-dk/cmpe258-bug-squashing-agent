@@ -50,33 +50,36 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 
 | Model | Role | Status |
 |-------|------|--------|
-| Gemini 2.0 Pro | Baseline | Fully wired |
-| Qwen-2.5 72B | Open SOTA | Stub (next milestone) |
-| MiniMax-M2.5 | Open MoE | Stub (next milestone) |
+| Gemini 2.0 Flash | Baseline | ✅ Fully wired (new google-genai SDK) |
+| Qwen-2.5 72B | Open SOTA | ✅ Implemented via Together AI |
+| MiniMax-M2.5 | Open MoE | ✅ Implemented via Together AI |
+| Gemma 4 | Local / Ollama | ✅ Implemented via Ollama |
 
 ## Current Progress
 
-- [x] Planner→Executor→Critic loop functional end-to-end with Gemini
-- [x] 5 hand-crafted bug cases across all 3 tiers with deterministic pytest scripts
-- [x] 3 few-shot triplets for in-context prompting
+- [x] Planner→Executor→Critic autonomous loop (tool-calling, multi-step)
+- [x] 50 bug cases across all 3 tiers with deterministic pytest scripts
+- [x] 8 few-shot triplets for in-context prompting
 - [x] Atomic patch writes with `ast.parse()` syntax validation
-- [x] Path traversal protection + subprocess `shell=False` allowlist
-- [x] Per-case Memory with dead-end detection and token budget
+- [x] Path traversal protection + subprocess `shell=False`
+- [x] Per-case Memory with dead-end detection and Dream consolidation
 - [x] Structured JSON-lines logging (prompts, patches, verdicts, token counts, latency)
-- [x] Full unit test suite (21 tests, all passing)
-- [x] Qwen-2.5 72B integration (next milestone)
-- [x] MiniMax-M2.5 integration (next milestone)
-- [ ] Remaining 45 bug cases
-- [ ] Web UI
-- [ ] Docker sandboxing
-- [ ] Full evaluation across all 50 cases × 3 models
+- [x] 22 unit tests, all passing
+- [x] Gemini 2.0 Flash (new google-genai SDK)
+- [x] Qwen-2.5 72B via Together AI
+- [x] MiniMax-M2.5 via Together AI
+- [x] Gemma 4 via Ollama (local, private)
+- [x] Interactive Rich CLI (`main.py`)
+- [x] Web UI with real-time SSE streaming (`web/app.py`)
+- [x] Batch eval runner (`eval.py`) + report generator (`eval_report.py`)
+- [x] Docker sandboxing (`Dockerfile`)
 
 ## Next Steps
 
-1.  Expand dataset to 50 cases across all 3 tiers
-2.  Build Web UI (upload files, select model, observe agent reasoning in real time)
-3.  Add Docker sandbox for safe execution
-4.  Run full evaluation and report metrics (pass rate, latency p50/p90/p99, cost/fix, retry depth)
+1.  Run full 50-case × 4-model evaluation: `python3 eval.py`
+2.  Review report: `python3 eval_report.py`
+3.  Launch web UI: `uvicorn web.app:app --reload --port 8000`
+4.  Deploy via Docker: `docker build -t bug-agent . && docker run -p 8000:8000 --env-file .env bug-agent`
 
 ## Setup
 
@@ -85,8 +88,17 @@ git clone https://github.com/yashashav-dk/cmpe258-bug-squashing-agent
 cd cmpe258-bug-squashing-agent
 pip install -r requirements.txt
 cp .env.example .env
-# Add your GEMINI_API_KEY to .env (get from aistudio.google.com)
+# Fill in GEMINI_API_KEY and/or TOGETHER_API_KEY in .env
+
+# CLI mode
 python3 main.py --case case_001 --model gemini
+
+# Web UI
+uvicorn web.app:app --reload --port 8000
+
+# Batch eval (all 50 cases × all models)
+python3 eval.py --models gemini
+python3 eval_report.py
 ```
 
 ## Project Structure

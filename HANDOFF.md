@@ -38,28 +38,29 @@ python3 main.py --case <id> --model <name>
 | Config | `config.py` | Done |
 | Logger | `logger.py` | Done |
 | BaseModel + ModelResponse | `models/base.py` | Done |
-| Gemini client | `models/gemini.py` | Done — fully wired |
-| Qwen client | `models/qwen.py` | **Stub** — raises NotImplementedError |
-| MiniMax client | `models/minimax.py` | **Stub** — raises NotImplementedError |
+| Gemini client | `models/gemini.py` | Done — google-genai SDK, inspect-based schema |
+| Qwen client | `models/qwen.py` | Done — Together AI REST API |
+| MiniMax client | `models/minimax.py` | Done — Together AI REST API |
+| Gemma 4 client | `models/gemma4.py` | Done — Ollama local |
 | Memory | `agent/memory.py` | Done |
 | Planner | `agent/planner.py` | Done |
 | Executor | `agent/executor.py` | Done |
 | Critic | `agent/critic.py` | Done |
 | Entry point | `main.py` | Done |
-| Dataset (5 cases) | `dataset/cases/` | Done |
-| Few-shot triplets | `dataset/few_shot/` | Done (3 triplets) |
-| Unit tests | `tests/` | Done — 21 tests, all passing |
-| Web UI | `web/` | **Not started** |
-| Docker | `Dockerfile` | **Not started** |
+| Dataset (50 cases) | `dataset/cases/` | Done — all 50 cases, 3 tiers |
+| Few-shot triplets | `dataset/few_shot/` | Done — 8 triplets |
+| Unit tests | `tests/` | Done — 22 tests, all passing |
+| Batch evaluator | `eval.py` | Done |
+| Eval report | `eval_report.py` | Done |
+| Web UI | `web/` | Done — FastAPI + SSE + dark-mode frontend |
+| Docker | `Dockerfile` | Done — non-root sandboxed build |
 
 ## Pending Work
 
-- [ ] **Qwen-2.5 72B:** implement `models/qwen.py` using Together AI Python SDK (`pip install together`), add `TOGETHER_API_KEY` to `.env.example`
-- [ ] **MiniMax-M2.5:** find current inference endpoint, implement `models/minimax.py`
-- [ ] **Dataset:** add 45 more cases to `dataset/cases/` (see tier distribution in README)
-- [ ] **Web UI:** build in `web/` — Flask or FastAPI backend + simple JS frontend for file upload, model selection, real-time agent output
-- [ ] **Docker:** add `Dockerfile` for sandboxed execution; integrate into Executor's subprocess call
-- [ ] **Evaluation:** run `python3 main.py --case <all> --model <all>`, collect metrics from `logs/run.jsonl`
+All major items are complete. The only remaining work is:
+- [ ] **Evaluation:** run `python3 eval.py --models gemini --cases case_001 case_002` (requires API keys)
+- [ ] **Demo video:** record a walkthrough for the Kaggle submission
+- [ ] Add more dataset cases beyond 50 if needed for final benchmarking
 
 ## How to Add a New LLM
 

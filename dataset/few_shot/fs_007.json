@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def product(nums: list) -> int:\n    result = 0\n    for n in nums:\n        result *= n\n    return result\n",
+  "traceback": "FAILED test_buggy.py::test_product_basic - assert 0 == 24\nFAILED test_buggy.py::test_product_single - assert 0 == 7",
+  "fix": "def product(nums: list) -> int:\n    result = 1\n    for n in nums:\n        result *= n\n    return result\n"
+}

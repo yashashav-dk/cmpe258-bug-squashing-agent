@@ -1,0 +1,5 @@
+{
+  "buggy_code": "def make_counter():\n    count = 0\n    def increment():\n        count += 1\n        return count\n    return increment\n",
+  "traceback": "FAILED test_buggy.py::test_counter_increments - UnboundLocalError: local variable 'count' referenced before assignment",
+  "fix": "def make_counter():\n    count = 0\n    def increment():\n        nonlocal count\n        count += 1\n        return count\n    return increment\n"
+}
