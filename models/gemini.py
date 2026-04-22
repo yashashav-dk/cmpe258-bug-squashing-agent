@@ -1,12 +1,57 @@
+import inspect
 import os
 import time
 from typing import List, Dict, Any, Optional
-import google.generativeai as genai
-from google.generativeai.types import content_types
+
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+
 from models.base import BaseModel, ModelResponse
 
 load_dotenv()
+
+
+def _fn_to_declaration(fn) -> types.FunctionDeclaration:
+    """Convert a Python function to a Gemini FunctionDeclaration using its signature and docstring."""
+    sig = inspect.signature(fn)
+    doc = inspect.getdoc(fn) or ""
+
+    # Parse per-arg descriptions from docstring "Args:" block
+    arg_docs: Dict[str, str] = {}
+    in_args = False
+    for line in doc.splitlines():
+        stripped = line.strip()
+        if stripped == "Args:":
+            in_args = True
+            continue
+        if in_args:
+            if stripped and not stripped.startswith(" ") and stripped.endswith(":") and " " not in stripped:
+                # New section
+                break
+            if ":" in stripped:
+                arg_name, _, arg_desc = stripped.partition(":")
+                arg_docs[arg_name.strip()] = arg_desc.strip()
+
+    properties: Dict[str, types.Schema] = {}
+    required: List[str] = []
+    for param_name, param in sig.parameters.items():
+        if param_name in ("self",):
+            continue
+        description = arg_docs.get(param_name, param_name)
+        properties[param_name] = types.Schema(type="STRING", description=description)
+        if param.default is inspect.Parameter.empty:
+            required.append(param_name)
+
+    return types.FunctionDeclaration(
+        name=fn.__name__,
+        description=doc.split("\n\n")[0].strip() if doc else fn.__name__,
+        parameters=types.Schema(
+            type="OBJECT",
+            properties=properties,
+            required=required,
+        ),
+    )
 
 
 class GeminiModel(BaseModel):
@@ -16,88 +61,106 @@ class GeminiModel(BaseModel):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise EnvironmentError("GEMINI_API_KEY not set in environment")
-        genai.configure(api_key=api_key)
-        self._base_client = genai.GenerativeModel(self._model_name)
+        self._client = genai.Client(api_key=api_key)
 
-    def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        gemini_msgs = []
+    def _build_contents(self, messages: List[Dict[str, Any]]) -> List[types.Content]:
+        """Convert our internal message list into Gemini Content objects."""
+        contents: List[types.Content] = []
         for msg in messages:
-            role = "user"
-            if msg["role"] == "assistant":
-                role = "model"
-            elif msg["role"] == "system":
-                # system instructions handled separately
+            role = msg.get("role", "user")
+            if role == "system":
+                # system handled via system_instruction separately
                 continue
-            
-            parts = []
-            if "content" in msg and msg["content"] is not None:
-                parts.append(msg["content"])
-                
-            # Handle tool call responses
-            if msg["role"] == "tool" or msg.get("name"):
-                 # Gemini expects a specific format for function responses
-                 role = "user" # Function responses come from user
-                 parts = [content_types.Part.from_function_response(
-                     name=msg.get("name", "function"),
-                     response={"result": msg["content"]}
-                 )]
-            
-            # Handle assistant tool calls in history
-            if msg.get("tool_calls"):
-                for tc in msg["tool_calls"]:
-                    # We would ideally reconstruct the function_call part here, 
-                    # but for simplicity if we are just re-playing history, we might skip it or handle it.
-                    pass
 
+            parts: List[types.Part] = []
+
+            # Function (tool) response → comes back as a user turn
+            if role == "tool":
+                parts.append(
+                    types.Part.from_function_response(
+                        name=msg.get("name", "function"),
+                        response={"result": msg.get("content", "")},
+                    )
+                )
+                contents.append(types.Content(role="user", parts=parts))
+                continue
+
+            # Assistant message that may contain function calls
+            if role == "assistant":
+                text_content = msg.get("content") or ""
+                if text_content:
+                    parts.append(types.Part.from_text(text=text_content))
+                for tc in msg.get("tool_calls") or []:
+                    parts.append(
+                        types.Part.from_function_call(
+                            name=tc["name"],
+                            args=tc["arguments"],
+                        )
+                    )
+                if parts:
+                    contents.append(types.Content(role="model", parts=parts))
+                continue
+
+            # Regular user message
+            content = msg.get("content") or ""
+            if content:
+                parts.append(types.Part.from_text(text=content))
             if parts:
-                gemini_msgs.append({"role": role, "parts": parts})
-        return gemini_msgs
+                contents.append(types.Content(role="user", parts=parts))
 
-    def chat(self, messages: List[Dict[str, Any]], tools: Optional[list] = None, system_instruction: str = "") -> ModelResponse:
+        return contents
+
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[list] = None,
+        system_instruction: str = "",
+    ) -> ModelResponse:
         start = time.monotonic()
-        
-        # In Gemini, system_instruction or tools requires re-initializing the GenerativeModel instance
-        kwargs = {}
-        if system_instruction:
-            kwargs["system_instruction"] = system_instruction
+
+        # Build Gemini tool spec
+        gemini_tools = None
         if tools:
-            kwargs["tools"] = tools
-            
-        client = genai.GenerativeModel(self._model_name, **kwargs) if kwargs else self._base_client
-        
-        contents = self._convert_messages(messages)
-        
+            declarations = [_fn_to_declaration(fn) for fn in tools]
+            gemini_tools = [types.Tool(function_declarations=declarations)]
+
+        contents = self._build_contents(messages)
+
+        config_kwargs: Dict[str, Any] = {}
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
+        if gemini_tools:
+            config_kwargs["tools"] = gemini_tools
+
+        generate_config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
+
         try:
-            response = client.generate_content(contents)
+            response = self._client.models.generate_content(
+                model=self._model_name,
+                contents=contents,
+                config=generate_config,
+            )
         except Exception as e:
-            # Fallback or error logging
             print(f"Gemini API Error: {e}")
-            raise e
+            raise
 
         latency_ms = (time.monotonic() - start) * 1000
 
         text = ""
-        tool_calls = []
-        
-        if hasattr(response, "parts") and response.parts:
-            for part in response.parts:
-                if hasattr(part, "text") and part.text:
+        tool_calls: List[Dict[str, Any]] = []
+
+        for candidate in response.candidates or []:
+            for part in candidate.content.parts or []:
+                if part.text:
                     text += part.text
-                if hasattr(part, "function_call") and part.function_call:
-                    args = {k: v for k, v in part.function_call.args.items()}
+                if part.function_call:
+                    fc = part.function_call
                     tool_calls.append({
-                        "name": part.function_call.name,
-                        "arguments": args
+                        "name": fc.name,
+                        "arguments": dict(fc.args) if fc.args else {},
                     })
 
-        # Fallback if no parts but text exists
-        if not text and hasattr(response, "text"):
-            try:
-                text = response.text
-            except Exception:
-                pass
-
-        usage = getattr(response, "usage_metadata", None)
+        usage = response.usage_metadata
         input_tokens = getattr(usage, "prompt_token_count", 0) if usage else 0
         output_tokens = getattr(usage, "candidates_token_count", 0) if usage else 0
 
@@ -106,9 +169,8 @@ class GeminiModel(BaseModel):
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             latency_ms=latency_ms,
-            tool_calls=tool_calls if tool_calls else None
+            tool_calls=tool_calls if tool_calls else None,
         )
 
     def name(self) -> str:
         return self._model_name
-

@@ -5,7 +5,7 @@ MAX_RETRIES = 5
 MAX_MEMORY_TOKENS = 2000
 
 # Model
-GEMINI_MODEL = "gemini-2.0-pro"  # update to current available model if needed
+GEMINI_MODEL = "gemini-2.0-flash"  # gemini-2.0-flash is available; change to gemini-1.5-pro if needed
 GEMMA4_MODEL = "gemma4:latest"
 
 # Paths

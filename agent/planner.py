@@ -38,17 +38,19 @@ class Planner:
                 system_instruction=SYSTEM_PROMPT
             )
             
-            assistant_msg = {
+            response_text = response.text or ""
+
+            assistant_msg: Dict[str, Any] = {
                 "role": "assistant",
-                "content": response.text,
+                "content": response_text,
             }
             if response.tool_calls:
                 assistant_msg["tool_calls"] = response.tool_calls
                 
             self.history.append(assistant_msg)
 
-            if response.text:
-                print(f"[Agent]: {response.text}")
+            if response_text:
+                print(f"[Agent]: {response_text}")
                 
             if response.tool_calls:
                 for tool_call in response.tool_calls:
@@ -67,15 +69,16 @@ class Planner:
                                 tool_result = f"Tool execution failed: {e}"
                             break
                     
-                    print(f"  [Tool Output]:\\n{str(tool_result)[:200]}...")
+                    print(f"  [Tool Output]:\n{str(tool_result)[:200]}...")
                     self.history.append({
                         "role": "tool",
                         "name": name,
                         "content": str(tool_result)
                     })
             else:
-                if "RESOLVED" in response.text or "All tests pass" in response.text:
-                    return response.text
+                if "RESOLVED" in response_text or "All tests pass" in response_text:
+                    return response_text
         
         return "Max steps reached without resolving the bug."
+
 
