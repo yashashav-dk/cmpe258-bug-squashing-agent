@@ -45,9 +45,15 @@ def run_bash(command: str, cwd: str = ".") -> str:
         command: The bash command to run (e.g., 'pytest test_buggy.py')
         cwd: Current working directory optionally.
     """
+    import shlex
     try:
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True, cwd=cwd
+            shlex.split(command),
+            shell=False,
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            timeout=60,
         )
         out = ""
         if result.stdout:
