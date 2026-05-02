@@ -42,8 +42,15 @@
               <option value="gemma4">Gemma 4 (Ollama)</option>
               <option value="qwen">Qwen-2.5 72B</option>
               <option value="minimax">MiniMax-M2.5</option>
+              <option value="local">Custom Local Model (Ollama)</option>
             </select>
           </div>
+        </div>
+
+        <!-- Custom model input -->
+        <div class="form-group hidden" id="custom-model-group">
+          <label class="form-label" for="custom-model-input">Ollama Model Tag</label>
+          <input type="text" id="custom-model-input" class="select" style="padding-right: 14px;" placeholder="e.g. llama3, mistral, gemma">
         </div>
 
         <!-- Mode selector -->

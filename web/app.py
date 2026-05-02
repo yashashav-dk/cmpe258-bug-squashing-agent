@@ -89,6 +89,10 @@ async def _stream_agent(buggy_code: str, case_id: str, case_dir: str, model_name
         elif model_name == "gemma4":
             from models.gemma4 import Gemma4Model
             model = Gemma4Model()
+        elif model_name.startswith("local:"):
+            custom_model = model_name.split(":", 1)[1]
+            from models.gemma4 import Gemma4Model
+            model = Gemma4Model(model_name=custom_model)
         else:
             yield _sse("error", {"message": f"Unknown model: {model_name}"})
             return

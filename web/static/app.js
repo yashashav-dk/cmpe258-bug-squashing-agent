@@ -13,6 +13,9 @@ let caseFiles = {};  // case_id -> code
 document.addEventListener("DOMContentLoaded", async () => {
   await loadCases();
   setupUploadZone();
+  document.getElementById("model-select").addEventListener("change", (e) => {
+    document.getElementById("custom-model-group").classList.toggle("hidden", e.target.value !== "local");
+  });
 });
 
 async function loadCases() {
@@ -93,7 +96,12 @@ function readFile(file) {
 async function startRun() {
   if (currentEventSource) { currentEventSource.close(); currentEventSource = null; }
 
-  const model = document.getElementById("model-select").value;
+  let model = document.getElementById("model-select").value;
+  if (model === "local") {
+    const custom = document.getElementById("custom-model-input").value.trim();
+    if (!custom) return alert("Please enter an Ollama model tag (e.g. llama3, mistral).");
+    model = "local:" + custom;
+  }
   clearOutput();
   resetStats();
   startTime = Date.now();
