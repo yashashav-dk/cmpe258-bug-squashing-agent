@@ -34,7 +34,7 @@ async function runManifest() {
   setStatus("Running", "blue");
   const form = new FormData();
   form.append("manifest", document.getElementById("manifest-select").value);
-  form.append("models", document.getElementById("models-input").value || "gemma4");
+  form.append("models", document.getElementById("models-input").value || "gemini");
   form.append("max_steps", document.getElementById("max-steps-input").value || "15");
   form.append("timeout_s", document.getElementById("timeout-input").value || "180");
   form.append("repetitions", "1");

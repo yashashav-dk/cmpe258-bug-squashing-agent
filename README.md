@@ -36,15 +36,36 @@ Each case: `buggy.py` + `test_buggy.py` + `golden.py` (reference, never fed to a
 ### Planner–Executor–Critic Architecture
 
 ```
-Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/retry/give up)
-                                         ↑                          |
-                                      Memory ←─────────────────────┘
+┌──── PEC outer loop (per case, attempt = 1..max_attempts) ────┐
+│                                                              │
+│   Planner (tool-loop) ─► edits buggy code via scoped tools   │
+│        │                                                     │
+│        ▼                                                     │
+│   Executor.verify(target_test, regression_test)              │
+│        │ subprocess (argv form, shell=False where parsable)  │
+│        ▼                                                     │
+│   Critic.evaluate(passed, traceback, memory, attempt)        │
+│        │                                                     │
+│        ├── RESOLVED → return                                 │
+│        ├── RETRY    → augment objective with retry context   │
+│        └── UNRESOLVED → return (budget exhausted)            │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- **Planner:** Analyzes traceback + source + memory → structured JSON patch plan
-- **Executor:** Validates scope via `os.path.realpath()`, atomically applies patch (`ast.parse` + `os.replace`), re-runs pytest via `subprocess` with `shell=False`
-- **Critic:** Drives retry loop; terminates on PASS or `MAX_RETRIES`
-- **Memory:** Tracks edit history, error evolution, and dead-end patches per case (not global chat history)
+Implementation: `benchmark/orchestrator.py` (`PECOrchestrator`, `BenchmarkExecutor`) + `agent/critic.py` (`Critic`, `CaseResult`). The `AgentRuntime` in `benchmark/runtime.py` instantiates and drives the loop.
+
+- **Planner** (`agent/planner.py`): tool-loop over scoped benchmark tools (`run_target_test`, `run_regression_test`, `read_file`, `edit_file`, `list_dir`). Emits in-place edits and a final natural-language summary; not a structured patch object — kept as tool-loop because Executor verification is the truth source.
+- **Executor** (`benchmark/orchestrator.py:BenchmarkExecutor`): runs target + regression tests independently of the Planner, returning ground-truth pass/fail. Uses argv form (`shell=False`) when commands are tokenizable; falls back to shell only for legacy compound commands.
+- **Critic** (`agent/critic.py`): emits explicit `RESOLVED | RETRY | UNRESOLVED` per attempt. Builds retry context fed into next attempt's objective when budget remains.
+- **Memory** (`agent/memory.py`): per-case state, dead-end fingerprints. Single instance per orchestrator run.
+
+#### Proposal deltas
+
+| Proposal claim | Implemented | Note |
+|---|---|---|
+| `Gemini 3.1 Pro` | `gemini-2.5-flash` (`config.py:8`) | New `google-genai` SDK; 3.x Pro not yet GA at scope-freeze |
+| Planner emits structured JSON patch plan | Tool-loop with in-place edits | Functionally equivalent: Executor still owns verification; Critic still owns retry |
+| Single-pass eval | Multi-attempt PEC outer loop (`--max-attempts`) | Default `max_attempts=1` preserves prior behavior; `>1` enables Critic-driven retry |
 
 ### Models Compared
 
@@ -55,22 +76,58 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 | MiniMax-M2.5 | Open MoE | ✅ Implemented via Together AI |
 | Gemma 4 | Local / Ollama | ✅ Implemented via Ollama |
 
+## Benchmark Contract (final reporting)
+
+Locked configuration used to generate the submission-grade report. Reproducing these numbers requires only the commands below.
+
+| Field | Value |
+|---|---|
+| Manifest | `benchmark/manifests/pilot_synthetic_new4.jsonl` |
+| Models | `gemini`, `gemma4` (Ollama local) |
+| `--max-steps` | `15` |
+| `--max-attempts` | `1` (Critic outer-loop budget; multi-attempt available) |
+| `--timeout-s` | `180` |
+| `--repetitions` | `1` |
+| Random seed | `7` (manifest sampling), reproducible test injection |
+| Pricing source | `benchmark/protocol.py:MODEL_PRICING_USD_PER_1M`, `PRICING_SOURCE` |
+
+Reproduce:
+
+```bash
+# 1. ensure Ollama is running and gemma4 is pulled
+ollama list | grep -E "^gemma4"   # expect a row
+
+# 2. final matrix run
+python -m benchmark.run_matrix \
+  --manifest benchmark/manifests/pilot_synthetic_new4.jsonl \
+  --models gemini,gemma4 \
+  --output logs/final_results.jsonl \
+  --max-steps 15 --max-attempts 1 \
+  --timeout-s 180 --repetitions 1
+
+# 3. analyze (emits per-model rows: pass_rate, latency p50/p90/p99,
+#    retry-depth distribution, estimated cost, cost_per_successful_fix_usd)
+python -m benchmark.analyze \
+  --input logs/final_results.jsonl \
+  --output logs/benchmark_report.json
+```
+
 ## Current Progress
 
-- [x] Planner→Executor→Critic autonomous loop (tool-calling, multi-step)
+- [x] Planner → Executor → Critic outer loop with explicit state transitions (`benchmark/orchestrator.py`)
 - [x] 50 bug cases across all 3 tiers with deterministic pytest scripts
 - [x] 8 few-shot triplets for in-context prompting
 - [x] Atomic patch writes with `ast.parse()` syntax validation
-- [x] Path traversal protection + subprocess `shell=False`
+- [x] Path traversal protection + Executor uses argv form (`shell=False`) where tokenizable
 - [x] Per-case Memory with dead-end detection and Dream consolidation
-- [x] Structured JSON-lines logging (prompts, patches, verdicts, token counts, latency)
-- [x] 22 unit tests, all passing
-- [x] Gemini 2.0 Flash (new google-genai SDK)
+- [x] Structured JSON-lines logging (prompts, patches, verdicts, token counts, latency, PEC attempt records)
+- [x] 51 unit tests, all passing
+- [x] Gemini (`gemini-2.5-flash` via google-genai SDK)
 - [x] Qwen-2.5 72B via Together AI
 - [x] MiniMax-M2.5 via Together AI
 - [x] Gemma 4 via Ollama (local, private)
 - [x] Interactive Rich CLI (`main.py`)
-- [x] Web UI with real-time SSE streaming (`web/app.py`)
+- [x] Web UI for benchmark runs (`web/app.py`); live-stream UI is planned (see `docs/spec.md`)
 - [x] Batch eval runner (`eval.py`) + report generator (`eval_report.py`)
 - [x] Docker sandboxing (`Dockerfile`)
 

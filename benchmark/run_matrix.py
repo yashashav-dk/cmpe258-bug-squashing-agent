@@ -121,6 +121,7 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=15)
     parser.add_argument("--timeout-s", type=int, default=120)
     parser.add_argument("--repetitions", type=int, default=1)
+    parser.add_argument("--max-attempts", type=int, default=1, help="Critic-driven retry attempts per case (PEC outer loop).")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--skip-injection", action="store_true")
     parser.add_argument(
@@ -150,7 +151,12 @@ def main() -> None:
     print(f"[run_matrix] RESULTS_PATH={output_path.resolve()}")
     print(f"[run_matrix] EVENTS_PATH={event_log_path}")
     event_logger = Logger(str(event_log_path))
-    runtime = AgentRuntime(max_steps=args.max_steps, timeout_s=args.timeout_s, logger=event_logger)
+    runtime = AgentRuntime(
+        max_steps=args.max_steps,
+        timeout_s=args.timeout_s,
+        logger=event_logger,
+        max_attempts=args.max_attempts,
+    )
 
     for case, model, rep in iter_matrix(cases, models, args.repetitions):
         run_case_id = f"{case.case_id}__{model}__rep{rep}"
@@ -194,6 +200,8 @@ def main() -> None:
                     "wall_time_ms": result.wall_time_ms,
                     "planner_stats": result.planner_stats,
                     "model_text": result.model_text,
+                    "critic_verdict": result.critic_verdict,
+                    "critic_attempts": result.critic_attempts or [],
                 }
             )
         except InvalidBenchmarkCaseError as exc:

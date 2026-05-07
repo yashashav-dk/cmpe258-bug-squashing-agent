@@ -1,14 +1,19 @@
 import os
-import subprocess
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
+from agent.critic import Critic
 from agent.planner import Planner
 from agent.tools_impl import make_benchmark_tools
 from benchmark.manifest import BenchmarkCase
+from benchmark.orchestrator import (
+    BenchmarkExecutor,
+    OrchestratorResult,
+    PECOrchestrator,
+)
 from logger import Logger
 
 
@@ -54,28 +59,26 @@ class RuntimeResult:
     wall_time_ms: float
     failure_mode: str
     planner_stats: Dict[str, float]
+    critic_verdict: str = "unknown"
+    critic_attempts: List[Dict[str, object]] = None
 
 
-def _run_command(command: str, cwd: str, timeout_s: int) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        command,
-        shell=True,
-        capture_output=True,
-        text=True,
-        cwd=cwd,
-        timeout=timeout_s,
-    )
-
-
-def _classify_failure(target_exit: int, regression_exit: Optional[int], model_text: str) -> str:
+def _classify_failure(
+    target_exit: int,
+    regression_exit: Optional[int],
+    model_text: str,
+    critic_verdict: str,
+) -> str:
     if target_exit == 0 and (regression_exit in (None, 0)):
         return "none"
     if target_exit != 0 and ("RESOLVED" in model_text or "All tests pass" in model_text):
         return "false_resolved"
-    if target_exit != 0:
-        return "localization_failure"
-    if regression_exit not in (None, 0):
+    if regression_exit not in (None, 0) and target_exit == 0:
         return "test_regression"
+    if target_exit != 0:
+        if critic_verdict == "unresolved":
+            return "localization_failure"
+        return "localization_failure"
     return "environment_error"
 
 
@@ -106,10 +109,21 @@ def _temporary_env(key: str, value: Optional[str]):
 
 
 class AgentRuntime:
-    def __init__(self, max_steps: int, timeout_s: int, logger: Optional[Logger] = None):
+    def __init__(
+        self,
+        max_steps: int,
+        timeout_s: int,
+        logger: Optional[Logger] = None,
+        max_attempts: int = 1,
+    ):
         self.max_steps = max_steps
         self.timeout_s = timeout_s
         self.logger = logger
+        self.max_attempts = max(1, int(max_attempts))
+
+    def _log(self, case_id: str, event: str, data: Dict[str, object]) -> None:
+        if self.logger:
+            self.logger.log(event=event, case_id=case_id, data=data)
 
     def run_case(self, case: BenchmarkCase, model_name: str, case_id: str) -> RuntimeResult:
         workspace_dir = case.metadata.get("workspace_dir")
@@ -141,33 +155,55 @@ class AgentRuntime:
             case_id=case_id,
             tools=benchmark_tools,
         )
+
+        executor = BenchmarkExecutor(workspace_dir=workspace_dir, timeout_s=self.timeout_s)
+        critic = Critic(max_retries=self.max_attempts)
+        orchestrator = PECOrchestrator(
+            executor=executor,
+            critic=critic,
+            max_attempts=self.max_attempts,
+            log_event=lambda event, data: self._log(case_id, event, data),
+        )
+
+        def planner_runner(current_objective: str) -> str:
+            with _temporary_env("BENCHMARK_WORKSPACE_ROOT", workspace_dir):
+                with _pushd(workspace_dir):
+                    return planner.run_autonomous_loop(current_objective)
+
         start = time.monotonic()
-        # Enforce case workspace as process cwd so tool paths resolve to the target repo.
-        with _temporary_env("BENCHMARK_WORKSPACE_ROOT", workspace_dir):
-            with _pushd(workspace_dir):
-                model_text = planner.run_autonomous_loop(objective)
-
-        target = _run_command(case.test_command, cwd=workspace_dir, timeout_s=self.timeout_s)
-        regression_exit: Optional[int] = None
-        regression_output = ""
-
-        if case.regression_test_command:
-            regression = _run_command(case.regression_test_command, cwd=workspace_dir, timeout_s=self.timeout_s)
-            regression_exit = regression.returncode
-            regression_output = regression.stdout + regression.stderr
-
+        orch_result: OrchestratorResult = orchestrator.run(
+            planner_runner=planner_runner,
+            objective=objective,
+            target_command=case.test_command,
+            regression_command=case.regression_test_command,
+        )
         wall_time_ms = (time.monotonic() - start) * 1000
-        failure_mode = _classify_failure(target.returncode, regression_exit, model_text)
-        resolved = target.returncode == 0 and (regression_exit in (None, 0))
 
+        outcome = orch_result.last_outcome
+        failure_mode = _classify_failure(
+            outcome.target_exit_code,
+            outcome.regression_exit_code,
+            orch_result.last_planner_text,
+            orch_result.final_verdict,
+        )
         return RuntimeResult(
-            resolved=resolved,
-            model_text=model_text,
-            target_test_exit_code=target.returncode,
-            regression_test_exit_code=regression_exit,
-            target_test_output=target.stdout + target.stderr,
-            regression_test_output=regression_output,
+            resolved=outcome.passed,
+            model_text=orch_result.last_planner_text,
+            target_test_exit_code=outcome.target_exit_code,
+            regression_test_exit_code=outcome.regression_exit_code,
+            target_test_output=outcome.target_output,
+            regression_test_output=outcome.regression_output,
             wall_time_ms=wall_time_ms,
             failure_mode=failure_mode,
             planner_stats=planner.session_stats(),
+            critic_verdict=orch_result.final_verdict,
+            critic_attempts=[
+                {
+                    "attempt": a.attempt,
+                    "verdict": a.verdict,
+                    "target_exit_code": a.target_exit_code,
+                    "regression_exit_code": a.regression_exit_code,
+                }
+                for a in orch_result.attempts
+            ],
         )

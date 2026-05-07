@@ -224,7 +224,7 @@ def main():
     parser = argparse.ArgumentParser(description="Bug Squashing Agent Benchmark CLI")
     parser.add_argument("--case", required=False, help="(Deprecated) Case ID for legacy case-folder mode.")
     parser.add_argument("--manifest", required=False, help="Run benchmark directly for one manifest and exit.")
-    parser.add_argument("--model", default="gemma4", help="Default model/model-list for benchmark execution.")
+    parser.add_argument("--model", default="gemini", help="Default model/model-list for benchmark execution.")
     parser.add_argument("--output", default="logs/benchmark_results.jsonl", help="Benchmark results JSONL path.")
     parser.add_argument("--report-output", default="logs/benchmark_report.json", help="Benchmark report output path.")
     parser.add_argument("--max-steps", type=int, default=15, help="Planner max steps for benchmark runtime.")

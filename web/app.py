@@ -67,7 +67,7 @@ async def build_manifest_endpoint(
 @app.post("/api/run-manifest")
 async def run_manifest_endpoint(
     manifest: str = Form(...),
-    models: str = Form("gemma4"),
+    models: str = Form("gemini"),
     output: str = Form("logs/benchmark_results.jsonl"),
     report_output: str = Form("logs/benchmark_report.json"),
     max_steps: int = Form(15),
