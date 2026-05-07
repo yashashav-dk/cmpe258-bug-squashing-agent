@@ -76,9 +76,10 @@ async def _stream_agent(buggy_code: str, case_id: str, case_dir: str, model_name
         elif model_name == "minimax":
             from models.minimax import MiniMaxModel
             model = MiniMaxModel()
-        elif model_name == "gemma4":
-            from models.gemma4 import Gemma4Model
-            model = Gemma4Model()
+        elif model_name in ("gemma4", "gemma3", "gemma3_4b", "gemini_or", "qwen_or",
+                             "gemini3flash", "gemini3pro"):
+            from benchmark.runtime import get_model
+            model = get_model(model_name)
         elif model_name.startswith("local:"):
             custom_model = model_name.split(":", 1)[1]
             from models.gemma4 import Gemma4Model
@@ -202,6 +203,163 @@ async def run_case(
 
     return StreamingResponse(
         _stream_agent(buggy_code, case_id, case_dir, model),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+async def _stream_repo_run(
+    repo_url: str,
+    commit_id: str,
+    issue_id: str,
+    target_file: str,
+    test_command: str,
+    regression_test_command: str,
+    model_name: str,
+    max_steps: int,
+    timeout_s: int,
+):
+    import asyncio
+    import subprocess
+    import uuid
+    from datetime import datetime, timezone
+    from benchmark.manifest import BenchmarkCase
+    from benchmark.runtime import AgentRuntime
+
+    run_id   = uuid.uuid4().hex[:8]
+    repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+    clone_dir = os.path.join("logs", "runs", f"repo_{run_id}", repo_name)
+    os.makedirs(os.path.dirname(clone_dir), exist_ok=True)
+
+    yield _sse("status", {"phase": "clone", "message": f"Cloning {repo_url} …"})
+
+    proc = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: subprocess.run(
+            ["git", "clone", "--depth", "200", repo_url, clone_dir],
+            capture_output=True, text=True,
+        ),
+    )
+    if proc.returncode != 0:
+        yield _sse("error", {"message": f"Clone failed: {proc.stderr[:500]}"})
+        return
+    yield _sse("status", {"phase": "clone", "message": "Clone complete."})
+
+    if commit_id:
+        yield _sse("status", {"phase": "checkout", "message": f"Checking out {commit_id[:8]} …"})
+        proc = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: subprocess.run(
+                ["git", "-C", clone_dir, "checkout", commit_id],
+                capture_output=True, text=True,
+            ),
+        )
+        if proc.returncode != 0:
+            yield _sse("error", {"message": f"Checkout failed: {proc.stderr[:300]}"})
+            return
+        yield _sse("status", {"phase": "checkout", "message": f"At commit {commit_id[:8]}."})
+
+    yield _sse("status", {"phase": "preflight", "message": f"Preflight: {test_command}"})
+    try:
+        preflight = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: subprocess.run(
+                test_command, shell=True,
+                capture_output=True, text=True,
+                cwd=clone_dir, timeout=60,
+            ),
+        )
+        if preflight.returncode == 0:
+            yield _sse("status", {
+                "phase": "preflight",
+                "message": "Tests already pass — running agent to verify no regression.",
+            })
+        else:
+            yield _sse("status", {
+                "phase": "preflight",
+                "message": f"Tests fail (exit {preflight.returncode}) — bug confirmed, running agent.",
+            })
+    except Exception as e:
+        yield _sse("status", {"phase": "preflight", "message": f"Preflight skipped: {e}"})
+
+    case = BenchmarkCase(
+        case_id=f"github_{run_id}",
+        source_type="historical",
+        repo_url=repo_url,
+        repo_name=repo_name,
+        base_commit=commit_id or "HEAD",
+        python_version="3.11",
+        install=["pip", "install", "-e", ".", "pytest"],
+        test_command=test_command,
+        regression_test_command=regression_test_command or None,
+        allowed_paths=[target_file],
+        target_file=target_file,
+        injection_patch="# live issue — no injection",
+        expected_failures=[],
+        tags=["github", "live"],
+        difficulty="medium",
+        seed=0,
+        metadata={"workspace_dir": clone_dir, "issue_id": issue_id},
+    )
+
+    yield _sse("status", {
+        "phase": "agent",
+        "message": f"Agent running — model: {model_name}, max steps: {max_steps} …",
+    })
+
+    runtime = AgentRuntime(max_steps=max_steps, timeout_s=timeout_s)
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: runtime.run_case(
+                case=case,
+                model_name=model_name,
+                case_id=f"github_{run_id}",
+                workspace_root=clone_dir,
+            ),
+        )
+        yield _sse("done", {
+            "resolved":         result.resolved,
+            "model_text":       result.model_text,
+            "target_exit":      result.target_test_exit_code,
+            "test_output":      (result.target_test_output or "")[:3000],
+            "wall_time_ms":     round(result.wall_time_ms),
+            "failure_mode":     result.failure_mode,
+            "planner_stats":    result.planner_stats,
+            "issue_id":         issue_id,
+            "commit_id":        commit_id or "HEAD",
+            "workspace":        clone_dir,
+        })
+    except Exception as exc:
+        yield _sse("error", {"message": str(exc)})
+
+
+@app.post("/api/run-repo")
+async def run_repo_endpoint(
+    repo_url: str = Form(...),
+    commit_id: str = Form(""),
+    issue_id: str = Form(""),
+    target_file: str = Form(...),
+    test_command: str = Form(...),
+    regression_test_command: str = Form(""),
+    model: str = Form("gemini3pro"),
+    max_steps: int = Form(10),
+    timeout_s: int = Form(300),
+):
+    from fastapi.responses import StreamingResponse
+
+    return StreamingResponse(
+        _stream_repo_run(
+            repo_url=repo_url,
+            commit_id=commit_id,
+            issue_id=issue_id,
+            target_file=target_file,
+            test_command=test_command,
+            regression_test_command=regression_test_command,
+            model_name=model,
+            max_steps=max_steps,
+            timeout_s=timeout_s,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
