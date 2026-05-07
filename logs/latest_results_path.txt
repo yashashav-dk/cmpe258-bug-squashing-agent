@@ -1,1 +1,1 @@
-/Users/spartan/Downloads/cmpe258-bug-squashing-agent/logs/runs/20260507T105706Z_76a2cf4b/results.jsonl
+/Users/spartan/Projects/cmpe258-bug-squashing-agent/logs/runs/20260507T144917Z_2349f85a/results.jsonl
