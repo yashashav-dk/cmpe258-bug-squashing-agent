@@ -1,0 +1,93 @@
+{
+  "gemini": {
+    "consistency_checks": {
+      "resolved_plus_unresolved_equals_runs": true
+    },
+    "cost_per_successful_fix_usd": 0.000270675,
+    "estimated_cost_usd": {
+      "input": 0.0008583000000000001,
+      "output": 0.0002244,
+      "total": 0.0010827
+    },
+    "failure_modes": {
+      "none": 4
+    },
+    "latency_ms": {
+      "avg": 5674.439437512774,
+      "p50": 5631.105875130743,
+      "p90": 6702.382792020217,
+      "p99": 6702.382792020217
+    },
+    "pass_rate": 1.0,
+    "pass_rate_wilson_95": {
+      "high": 1.0,
+      "low": 0.5100999795960008
+    },
+    "pricing_assumptions": {
+      "input_usd_per_1m": 0.1,
+      "output_usd_per_1m": 0.4,
+      "source": "Static benchmark assumptions in benchmark/protocol.py (USD per 1M input/output tokens)."
+    },
+    "resolved": 4,
+    "retry_depth": {
+      "avg": 4.0,
+      "max": 5
+    },
+    "retry_depth_distribution": {
+      "3": 1,
+      "4": 2,
+      "5": 1
+    },
+    "runs": 4,
+    "token_usage": {
+      "input_tokens": 8583,
+      "output_tokens": 561
+    },
+    "unresolved": 0
+  },
+  "gemma4": {
+    "consistency_checks": {
+      "resolved_plus_unresolved_equals_runs": true
+    },
+    "cost_per_successful_fix_usd": 0.0,
+    "estimated_cost_usd": {
+      "input": 0.0,
+      "output": 0.0,
+      "total": 0.0
+    },
+    "failure_modes": {
+      "none": 4
+    },
+    "latency_ms": {
+      "avg": 28805.726041726302,
+      "p50": 27794.999583857134,
+      "p90": 36536.66550014168,
+      "p99": 36536.66550014168
+    },
+    "pass_rate": 1.0,
+    "pass_rate_wilson_95": {
+      "high": 1.0,
+      "low": 0.5100999795960008
+    },
+    "pricing_assumptions": {
+      "input_usd_per_1m": 0.0,
+      "output_usd_per_1m": 0.0,
+      "source": "Static benchmark assumptions in benchmark/protocol.py (USD per 1M input/output tokens)."
+    },
+    "resolved": 4,
+    "retry_depth": {
+      "avg": 4.5,
+      "max": 5
+    },
+    "retry_depth_distribution": {
+      "4": 2,
+      "5": 2
+    },
+    "runs": 4,
+    "token_usage": {
+      "input_tokens": 10956,
+      "output_tokens": 5827
+    },
+    "unresolved": 0
+  }
+}
