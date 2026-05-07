@@ -101,6 +101,51 @@ python3 eval.py --models gemini
 python3 eval_report.py
 ```
 
+## Hybrid Benchmark (OSS + Injection)
+
+The repository now includes an extensible benchmark stack under `benchmark/` for evaluating the agent on open-source repos with hybrid case generation:
+
+- historical real bugs (curated commit-derived cases),
+- deterministic synthetic mutations (operator-based),
+- adapter contract so source strategy can be swapped without runner refactors.
+
+### Build Hybrid Manifest
+
+```bash
+python -m benchmark.build_manifest \
+  --historical-source benchmark/data/historical_cases.sample.jsonl \
+  --synthetic-source benchmark/data/synthetic_templates.sample.jsonl \
+  --output benchmark/manifests/pilot_hybrid.jsonl \
+  --target-count 30 \
+  --historical-ratio 0.7 \
+  --synthetic-ratio 0.3
+```
+
+### Run Matrix (model × case)
+
+```bash
+python -m benchmark.run_matrix \
+  --manifest benchmark/manifests/pilot_hybrid.jsonl \
+  --models gemma4 \
+  --output logs/benchmark_results.jsonl \
+  --repetitions 1
+```
+
+### Analyze Results
+
+```bash
+python -m benchmark.analyze \
+  --input logs/benchmark_results.jsonl \
+  --output logs/benchmark_report.json
+```
+
+See `benchmark/README.md` and `docs/benchmark_protocol.md` for rigorous protocol details.
+
+Recent runtime hardening:
+- planner now validates malformed tool-call payloads and reports `Unknown tool` / invalid payload explicitly,
+- repeated identical failing tool calls are skipped to reduce step/token waste,
+- idempotent `edit_file` behavior treats already-applied patches as no-op success.
+
 ## Project Structure
 
 ```
@@ -120,6 +165,7 @@ python3 eval_report.py
 ├── dataset/
 │   ├── cases/           # Bug cases (buggy.py, test_buggy.py, golden.py)
 │   └── few_shot/        # In-context prompting triplets (JSON)
+├── benchmark/           # Hybrid OSS benchmark generation + execution + analysis
 └── tests/               # Unit tests for all modules
 ```
 

@@ -1,4 +1,6 @@
 from unittest.mock import MagicMock
+import os
+from pathlib import Path
 from agent.planner import Planner
 from agent.memory import Memory
 from models.base import BaseModel, ModelResponse
@@ -50,3 +52,60 @@ def test_autonomous_loop_tool_calls():
     model.chat.assert_called()
     assert "Max steps reached" in output # Because max_steps 1 limits the resolution
 
+
+def test_autonomous_loop_skips_repeated_identical_failing_tool_call():
+    model = make_mock_model(
+        "",
+        tool_calls=[{"name": "read_file", "arguments": {"filepath": "definitely_missing_file.py"}}],
+    )
+    planner = Planner(model=model, max_steps=2)
+
+    output = planner.run_autonomous_loop("Fix this bug.")
+
+    tool_messages = [item["content"] for item in planner.history if item.get("role") == "tool"]
+    assert any("Tool execution skipped" in msg for msg in tool_messages)
+    assert "Max steps reached" in output
+
+
+def test_autonomous_loop_handles_malformed_tool_payload():
+    model = make_mock_model("", tool_calls=[{}])
+    planner = Planner(model=model, max_steps=1)
+
+    output = planner.run_autonomous_loop("Fix this bug.")
+
+    tool_messages = [item["content"] for item in planner.history if item.get("role") == "tool"]
+    assert any("Invalid tool call payload" in msg for msg in tool_messages)
+    assert "Max steps reached" in output
+
+
+def test_autonomous_loop_noop_edit_triggers_auto_verify(tmp_path):
+    target = tmp_path / "buggy.py"
+    target.write_text("def f():\n    return 2\n", encoding="utf-8")
+    test_file = tmp_path / "test_buggy.py"
+    test_file.write_text("from buggy import f\n\ndef test_f():\n    assert f() == 2\n", encoding="utf-8")
+
+    model = make_mock_model(
+        "",
+        tool_calls=[
+            {
+                "name": "edit_file",
+                "arguments": {
+                    "filepath": "buggy.py",
+                    "old_content": "return 1",
+                    "new_content": "return 2",
+                },
+            }
+        ],
+    )
+    planner = Planner(model=model, max_steps=1)
+
+    prev_cwd = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        output = planner.run_autonomous_loop("Run `python -m pytest test_buggy.py::test_f -q` in `.` and fix.")
+    finally:
+        os.chdir(prev_cwd)
+
+    tool_messages = [item["content"] for item in planner.history if item.get("role") == "tool"]
+    assert any("Auto-verification" in msg for msg in tool_messages)
+    assert "RESOLVED" in output

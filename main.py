@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """
-main.py — Bug Squashing Agent (Interactive CLI)
-Inspired by Claude Code's interface.
+main.py — Benchmark-first interactive CLI.
 """
 import argparse
 import os
-import sys
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.status import Status
-from rich.markdown import Markdown
 
+from benchmark.ui_service import (
+    analyze,
+    build_manifest,
+    list_manifests,
+    run_pipeline,
+)
 from config import CASES_DIR, LOG_PATH
 from logger import Logger
 from agent.memory import Memory
@@ -36,8 +39,18 @@ def get_model(model_name: str):
         raise ValueError(f"Unknown model: {model_name!r}. Choose from: gemini, qwen, minimax, gemma4")
 
 
-def run_case(case_id: str, model_name: str, console: Console):
-    """Run the agent on a single case."""
+def run_case_legacy(case_id: str, model_name: str, console: Console):
+    """Deprecated case-level execution path."""
+    model = get_model(model_name)
+    run_logger = Logger(LOG_PATH)
+    run_logger.log(
+        event="run_start",
+        case_id=case_id,
+        data={"model": model_name, "mode": "run_case"},
+    )
+    console.print(f"[dim]Model initialized: {model.name()}[/dim]")
+    planner = Planner(model=model, max_steps=15, logger=run_logger, case_id=case_id)
+    memory = Memory()
     case_dir = os.path.join(CASES_DIR, case_id)
     buggy_path = os.path.join(case_dir, "buggy.py")
 
@@ -51,12 +64,6 @@ def run_case(case_id: str, model_name: str, console: Console):
 
     with open(buggy_path) as f:
         buggy_code = f.read()
-
-    model = get_model(model_name)
-    console.print(f"[dim]Model initialized: {model.name()}[/dim]")
-
-    planner = Planner(model=model, max_steps=15)
-    memory = Memory()
 
     msg = (
         f"Investigate this bug in {case_id}:\n```python\n{buggy_code}\n```\n"
@@ -73,8 +80,13 @@ def run_case(case_id: str, model_name: str, console: Console):
         result = planner.run_autonomous_loop(msg)
 
     console.print(f"\n[bold green]Final Result:[/bold green]\n{result}")
+    run_logger.log(
+        event="run_end",
+        case_id=case_id,
+        data={"model": model_name, "result_preview": result[:300], "planner_stats": planner.session_stats()},
+    )
 
-    # Dream system consolidation
+    # Dream consolidation
     console.print("\n[bold purple]Consolidating Memory / Dreaming...[/bold purple]")
     try:
         dream_text = memory.consolidate_dream(planner.history, planner.model)
@@ -83,19 +95,57 @@ def run_case(case_id: str, model_name: str, console: Console):
         console.print(f"[yellow]Dream consolidation skipped: {e}[/yellow]")
 
 
-def interactive_mode(model_name: str):
-    """REPL-style interactive loop to pick and run cases."""
+def _print_report(console: Console, report: dict, report_path: str) -> None:
+    if not report:
+        console.print(f"[yellow]No report rows found in {report_path}[/yellow]")
+        return
+    lines = []
+    for model, stats in report.items():
+        lines.append(
+            f"- {model}: runs={stats.get('runs', 0)} "
+            f"resolved={stats.get('resolved', 0)} pass_rate={stats.get('pass_rate', 0.0):.2f}"
+        )
+    console.print(Panel("\n".join(lines), title=f"Benchmark Report ({report_path})", border_style="green"))
+
+
+def _run_manifest_pipeline(
+    console: Console,
+    manifest_path: str,
+    models: str,
+    output_path: str,
+    report_output: str,
+    max_steps: int,
+    timeout_s: int,
+    repetitions: int,
+) -> None:
+    with Status("[bold green]Running benchmark matrix + analyze...", spinner="dots", console=console):
+        result = run_pipeline(
+            manifest=manifest_path,
+            models=models,
+            output=output_path,
+            report_output=report_output,
+            max_steps=max_steps,
+            timeout_s=timeout_s,
+            repetitions=repetitions,
+        )
+    console.print(f"[green]Results:[/green] {result.results_path}")
+    console.print(f"[green]Report:[/green] {result.report_path}")
+    _print_report(console, result.report, result.report_path)
+
+
+def interactive_mode(model_name: str, max_steps: int, timeout_s: int, repetitions: int):
+    """REPL-style benchmark workflow."""
     console = Console()
     console.print(Panel.fit(
         "[bold blue]🤖 CMPE 258 Bug Squashing Agent[/bold blue]\n"
-        "[green]Interactive Mode via Claude Code architecture[/green]"
+        "[green]Benchmark Manifest Mode[/green]"
     ))
 
     while True:
         try:
             choice = Prompt.ask(
-                "\n[bold]Options[/bold]: [1] Run a case  [q] Quit",
-                choices=["1", "q"],
+                "\n[bold]Options[/bold]: [1] Run manifest  [2] Build+Run  [3] Analyze latest  [4] List manifests  [q] Quit",
+                choices=["1", "2", "3", "4", "q"],
                 default="1",
             )
         except KeyboardInterrupt:
@@ -105,31 +155,113 @@ def interactive_mode(model_name: str):
         if choice == "q":
             break
 
-        # List available cases
-        if os.path.isdir(CASES_DIR):
-            cases = sorted(os.listdir(CASES_DIR))
-            console.print(f"[dim]Available cases: {', '.join(cases)}[/dim]")
+        if choice == "4":
+            manifests = list_manifests()
+            if manifests:
+                console.print("[dim]Available manifests:[/dim]")
+                for path in manifests:
+                    console.print(f"[dim]- {path}[/dim]")
+            else:
+                console.print("[yellow]No manifests found under benchmark/manifests[/yellow]")
+            continue
 
-        case_id = Prompt.ask("Enter case ID (e.g. case_001)")
-        run_case(case_id, model_name, console)
+        if choice == "3":
+            report_out = Prompt.ask("Report output", default="logs/benchmark_report.json")
+            proc = analyze(input_path="latest", output=report_out)
+            if proc.returncode != 0:
+                console.print(f"[red]Analyze failed[/red]\n{proc.stdout}\n{proc.stderr}")
+                continue
+            console.print(proc.stdout.strip())
+            continue
+
+        if choice == "2":
+            historical = Prompt.ask(
+                "Historical source",
+                default="benchmark/data/historical_cases.sample.jsonl",
+            )
+            synthetic = Prompt.ask(
+                "Synthetic source",
+                default="benchmark/data/synthetic_templates.sample.jsonl",
+            )
+            manifest_out = Prompt.ask(
+                "Manifest output",
+                default="benchmark/manifests/pilot_hybrid.jsonl",
+            )
+            build = build_manifest(
+                historical_source=historical,
+                synthetic_source=synthetic,
+                output=manifest_out,
+            )
+            if build.returncode != 0:
+                console.print(f"[red]Manifest build failed[/red]\n{build.stdout}\n{build.stderr}")
+                continue
+            console.print(build.stdout.strip())
+            manifest = manifest_out
+        else:
+            manifests = list_manifests()
+            default_manifest = manifests[0] if manifests else "benchmark/manifests/pilot_hybrid.jsonl"
+            manifest = Prompt.ask("Manifest path", default=default_manifest)
+
+        output_path = Prompt.ask("Results output", default="logs/benchmark_results.jsonl")
+        report_output = Prompt.ask("Report output", default="logs/benchmark_report.json")
+        models = Prompt.ask("Models (comma separated)", default=model_name)
+        try:
+            _run_manifest_pipeline(
+                console=console,
+                manifest_path=manifest,
+                models=models,
+                output_path=output_path,
+                report_output=report_output,
+                max_steps=max_steps,
+                timeout_s=timeout_s,
+                repetitions=repetitions,
+            )
+        except Exception as exc:
+            console.print(f"[red]Benchmark run failed:[/red] {exc}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bug Squashing Agent Interactive CLI")
-    parser.add_argument("--case", required=False, help="Case ID (e.g. case_001). Omit for interactive REPL.")
-    parser.add_argument("--model", default="gemma4", choices=["gemini", "qwen", "minimax", "gemma4"])
+    parser = argparse.ArgumentParser(description="Bug Squashing Agent Benchmark CLI")
+    parser.add_argument("--case", required=False, help="(Deprecated) Case ID for legacy case-folder mode.")
+    parser.add_argument("--manifest", required=False, help="Run benchmark directly for one manifest and exit.")
+    parser.add_argument("--model", default="gemma4", help="Default model/model-list for benchmark execution.")
+    parser.add_argument("--output", default="logs/benchmark_results.jsonl", help="Benchmark results JSONL path.")
+    parser.add_argument("--report-output", default="logs/benchmark_report.json", help="Benchmark report output path.")
+    parser.add_argument("--max-steps", type=int, default=15, help="Planner max steps for benchmark runtime.")
+    parser.add_argument("--timeout-s", type=int, default=180, help="Timeout used by benchmark runtime (seconds).")
+    parser.add_argument("--repetitions", type=int, default=1, help="Benchmark repetitions.")
     args = parser.parse_args()
 
     console = Console()
     console.print(Panel.fit(
         "[bold blue]🤖 CMPE 258 Bug Squashing Agent[/bold blue]\n"
-        "[green]Autonomous Mode via Claude Code architecture[/green]"
+        "[green]Autonomous Resolution Mode[/green]"
     ))
 
     if args.case:
-        run_case(case_id=args.case, model_name=args.model, console=console)
-    else:
-        interactive_mode(model_name=args.model)
+        console.print("[yellow]Warning: --case mode is deprecated. Prefer manifest workflow.[/yellow]")
+        run_case_legacy(case_id=args.case, model_name=args.model, console=console)
+        return
+
+    if args.manifest:
+        _run_manifest_pipeline(
+            console=console,
+            manifest_path=args.manifest,
+            models=args.model,
+            output_path=args.output,
+            report_output=args.report_output,
+            max_steps=args.max_steps,
+            timeout_s=args.timeout_s,
+            repetitions=args.repetitions,
+        )
+        return
+
+    interactive_mode(
+        model_name=args.model,
+        max_steps=args.max_steps,
+        timeout_s=args.timeout_s,
+        repetitions=args.repetitions,
+    )
 
 
 if __name__ == "__main__":

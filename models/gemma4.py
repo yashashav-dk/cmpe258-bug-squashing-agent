@@ -1,8 +1,8 @@
-import inspect
 import os
 import time
 import requests
 import json
+import inspect
 from typing import List, Dict, Any, Optional
 
 from models.base import BaseModel, ModelResponse
@@ -57,17 +57,54 @@ class Gemma4Model(BaseModel):
     Ollama integration for Gemma 4.
     Runs locally and targets the Kaggle Gemma 4 Good Hackathon (Ollama Track).
     """
-
-    def __init__(self, model_name: str = "gemma4:latest", endpoint: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "gemma4:latest", endpoint: str = None):
         self._model_name = model_name
-        self.endpoint = endpoint
+        self.endpoint = endpoint or os.getenv("OLLAMA_ENDPOINT", "http://localhost:11434")
+        self._session = requests.Session()
+        self._session.trust_env = False
 
-    def chat(
-        self,
-        messages: List[Dict[str, Any]],
-        tools: Optional[list] = None,
-        system_instruction: str = "",
-    ) -> ModelResponse:
+    def _convert_tools(self, tools: Optional[list]) -> list:
+        if not tools:
+            return []
+
+        def _param_schema(param_name: str) -> Dict[str, Any]:
+            hints = {
+                "filepath": "Path to file relative to current workspace.",
+                "command": "Shell command to execute.",
+                "cwd": "Working directory for command execution.",
+                "old_content": "Exact old text block to replace.",
+                "new_content": "Replacement text block.",
+            }
+            return {"type": "string", "description": hints.get(param_name, f"Value for {param_name}.")}
+
+        ollama_tools = []
+        for tool in tools:
+            signature = inspect.signature(tool)
+            properties: Dict[str, Any] = {}
+            required: List[str] = []
+            for name, param in signature.parameters.items():
+                properties[name] = _param_schema(name)
+                if param.default is inspect._empty:
+                    required.append(name)
+
+            ollama_tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.__name__,
+                        "description": (tool.__doc__ or "").strip(),
+                        "parameters": {
+                            "type": "object",
+                            "properties": properties,
+                            "required": required,
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            )
+        return ollama_tools
+
+    def chat(self, messages: List[Dict[str, Any]], tools: Optional[list] = None, system_instruction: str = "") -> ModelResponse:
         start = time.monotonic()
 
         url = f"{self.endpoint}/api/chat"
@@ -84,18 +121,25 @@ class Gemma4Model(BaseModel):
         }
 
         if tools:
-            payload["tools"] = [_fn_to_ollama_tool(fn) for fn in tools]
+            payload["tools"] = self._convert_tools(tools)
+            
+        max_retries = int(os.getenv("OLLAMA_MAX_RETRIES", "5"))
+        timeout_s = int(os.getenv("OLLAMA_TIMEOUT_S", "60"))
+        backoff_s = float(os.getenv("OLLAMA_RETRY_BACKOFF_S", "2"))
 
-        try:
-            res = requests.post(url, json=payload, timeout=120)
-            res.raise_for_status()
-            data = res.json()
-        except requests.exceptions.ConnectionError as e:
-            print(f"Ollama connection error (Ensure Ollama is running with 'ollama serve'): {e}")
-            raise
-        except Exception as e:
-            print(f"Ollama request error: {e}")
-            raise
+        last_error = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                res = self._session.post(url, json=payload, timeout=timeout_s)
+                res.raise_for_status()
+                data = res.json()
+                break
+            except Exception as e:
+                last_error = e
+                if attempt == max_retries:
+                    print(f"Ollama connection error (Ensure Ollama is running): {e}")
+                    raise e
+                time.sleep(backoff_s * attempt)
 
         latency_ms = (time.monotonic() - start) * 1000
 
