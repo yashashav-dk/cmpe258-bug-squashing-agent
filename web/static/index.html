@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bug Squashing Agent — Benchmark UI</title>
+  <title>Bug Squashing Agent</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
         <span class="logo-icon">🤖</span>
         <div>
           <div class="logo-title">Bug Squashing Agent</div>
-          <div class="logo-sub">Manifest-driven benchmark workflow</div>
+          <div class="logo-sub">Autonomous repair on real GitHub repositories</div>
         </div>
       </div>
       <div class="header-badges">
@@ -23,8 +23,90 @@
   </header>
 
   <main class="main">
-    <section class="card control-panel">
-      <h2 class="card-title">Run Benchmark</h2>
+
+    <!-- ── Tab bar ──────────────────────────────────────────────── -->
+    <div class="tab-group">
+      <button class="tab tab-active" onclick="switchTab('repo',this)">GitHub Repo</button>
+      <button class="tab" onclick="switchTab('manifest',this)">Run Manifest</button>
+      <button class="tab" onclick="switchTab('build',this)">Build Manifest</button>
+    </div>
+
+    <!-- ── Tab: GitHub Repo ─────────────────────────────────────── -->
+    <section id="tab-repo" class="card control-panel tab-panel">
+      <h2 class="card-title">
+        <span>Run Agent on GitHub Repository</span>
+      </h2>
+
+      <div class="repo-section-label">Repository</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group" style="grid-column: span 2">
+          <label class="form-label" for="repo-url">GitHub Repo URL</label>
+          <input id="repo-url" class="select" placeholder="https://github.com/pallets/click" value="https://github.com/pallets/click" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="commit-id">Commit ID <span class="form-hint">(optional)</span></label>
+          <input id="commit-id" class="select" placeholder="052c0060" value="052c0060" />
+        </div>
+      </div>
+
+      <div class="repo-section-label" style="margin-top:18px">Issue</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="issue-id">Issue / PR Reference <span class="form-hint">(optional)</span></label>
+          <input id="issue-id" class="select" placeholder="e.g. #1234 or GH-5678" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="target-file">Buggy File Path</label>
+          <input id="target-file" class="select" placeholder="src/click/parser.py" value="src/click/parser.py" />
+        </div>
+      </div>
+
+      <div class="repo-section-label" style="margin-top:18px">Test Commands</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="test-command">Target Test Command</label>
+          <input id="test-command" class="select" placeholder="pytest tests/test_basic.py -q" value="venv/bin/python -m pytest tests/test_basic.py -q" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regression-command">Regression Test Command <span class="form-hint">(optional)</span></label>
+          <input id="regression-command" class="select" placeholder="pytest tests/ -q" />
+        </div>
+      </div>
+
+      <div class="repo-section-label" style="margin-top:18px">Agent Configuration</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="repo-model">Model</label>
+          <select id="repo-model" class="select">
+            <option value="gemini3pro">Gemini 3 Pro</option>
+            <option value="gemini3flash">Gemini 3 Flash</option>
+            <option value="gemini">Gemini 2.0 Flash</option>
+            <option value="qwen_or">Qwen 2.5 72B</option>
+            <option value="gemma3">Gemma 3 27B</option>
+            <option value="gemma3_4b">Gemma 3 4B</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="repo-max-steps">Max Steps</label>
+          <input id="repo-max-steps" class="select" value="10" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="repo-timeout">Timeout (s)</label>
+          <input id="repo-timeout" class="select" value="300" />
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="repo-run-btn" class="btn btn-primary" onclick="runRepo()">
+          <span>▶ Run Agent</span>
+        </button>
+        <button class="btn btn-ghost" onclick="clearOutput()">Clear Output</button>
+      </div>
+    </section>
+
+    <!-- ── Tab: Run Manifest ────────────────────────────────────── -->
+    <section id="tab-manifest" class="card control-panel tab-panel hidden">
+      <h2 class="card-title">Run Manifest Benchmark</h2>
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label" for="manifest-select">Manifest</label>
@@ -32,15 +114,15 @@
         </div>
         <div class="form-group">
           <label class="form-label" for="models-input">Models</label>
-          <input id="models-input" class="select" value="gemma4" />
+          <input id="models-input" class="select" value="gemini3pro" />
         </div>
         <div class="form-group">
           <label class="form-label" for="max-steps-input">Max Steps</label>
-          <input id="max-steps-input" class="select" value="15" />
+          <input id="max-steps-input" class="select" value="10" />
         </div>
         <div class="form-group">
           <label class="form-label" for="timeout-input">Timeout (s)</label>
-          <input id="timeout-input" class="select" value="180" />
+          <input id="timeout-input" class="select" value="300" />
         </div>
       </div>
       <div class="action-row">
@@ -49,7 +131,8 @@
       </div>
     </section>
 
-    <section class="card control-panel">
+    <!-- ── Tab: Build Manifest ──────────────────────────────────── -->
+    <section id="tab-build" class="card control-panel tab-panel hidden">
       <h2 class="card-title">Build Manifest</h2>
       <div class="form-grid">
         <div class="form-group">
@@ -70,11 +153,28 @@
       </div>
     </section>
 
+    <!-- ── Output panel ─────────────────────────────────────────── -->
     <section class="card output-panel">
-      <h2 class="card-title">Output</h2>
-      <pre id="output-stream" class="code-block"></pre>
+      <div class="output-header">
+        <span class="card-title" style="margin-bottom:0">Output</span>
+        <div id="typing-wrap" class="hidden">
+          <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div id="output-stream" class="output-stream">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">No run yet</div>
+          <div class="empty-sub">Enter a GitHub repo URL and target file above, then click Run Agent.</div>
+        </div>
+      </div>
     </section>
+
   </main>
+
+  <footer class="footer">
+    Bug Squashing Agent <span class="footer-sep">·</span> CMPE 258 Spring 2026
+  </footer>
 
   <script src="/static/app.js"></script>
 </body>

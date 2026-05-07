@@ -112,10 +112,39 @@ body {
   gap: 20px;
   margin-bottom: 20px;
 }
-@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+.form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 640px) { .form-grid, .form-grid-3 { grid-template-columns: 1fr; } }
 
 .form-group { display: flex; flex-direction: column; gap: 8px; }
 .form-label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+.form-hint  { font-weight: 400; color: var(--text-muted); text-transform: none; }
+
+/* ── Repo section labels ─────────────────────────────────────────────────── */
+.repo-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(99,179,237,0.15);
+}
+
+/* ── Phase status events ─────────────────────────────────────────────────── */
+.event-phase {
+  background: rgba(99,179,237,0.05);
+  border: 1px solid rgba(99,179,237,0.12);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeSlideIn 0.2s ease;
+}
+.phase-icon { font-size: 15px; }
 
 .select-wrap { position: relative; }
 .select-wrap::after {
