@@ -111,6 +111,13 @@ class QwenModel(BaseModel):
         message = choice.get("message", {})
         text = message.get("content") or ""
 
+        # Extract <think>...</think> reasoning chain (Qwen-R1 style)
+        import re
+        think_blocks = re.findall(r"<think>(.*?)</think>", text, re.DOTALL)
+        thinking = "\n---\n".join(think_blocks).strip() if think_blocks else None
+        if think_blocks:
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
         tool_calls = []
         for tc in message.get("tool_calls") or []:
             fn = tc.get("function", {})
@@ -131,6 +138,7 @@ class QwenModel(BaseModel):
             output_tokens=output_tokens,
             latency_ms=latency_ms,
             tool_calls=tool_calls if tool_calls else None,
+            thinking=thinking,
         )
 
     def name(self) -> str:

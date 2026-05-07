@@ -9,6 +9,7 @@ class ModelResponse:
     output_tokens: int
     latency_ms: float
     tool_calls: Optional[List[Dict[str, Any]]] = None
+    thinking: Optional[str] = None  # Chain-of-thought / reasoning trace
 
 
 class BaseModel(ABC):

@@ -146,6 +146,13 @@ class Gemma4Model(BaseModel):
         response_message = data.get("message", {})
         text = response_message.get("content", "") or ""
 
+        # Extract <think>...</think> reasoning chain (Gemma3/4 thinking style)
+        import re
+        think_blocks = re.findall(r"<think>(.*?)</think>", text, re.DOTALL)
+        thinking = "\n---\n".join(think_blocks).strip() if think_blocks else None
+        if think_blocks:
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
         # Parse tool calls formatted by Ollama
         tool_calls = []
         for tc in response_message.get("tool_calls") or []:
@@ -171,6 +178,7 @@ class Gemma4Model(BaseModel):
             output_tokens=output_tokens,
             latency_ms=latency_ms,
             tool_calls=tool_calls if tool_calls else None,
+            thinking=thinking,
         )
 
     def name(self) -> str:

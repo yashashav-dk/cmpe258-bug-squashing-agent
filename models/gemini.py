@@ -147,11 +147,16 @@ class GeminiModel(BaseModel):
         latency_ms = (time.monotonic() - start) * 1000
 
         text = ""
+        thinking = ""
         tool_calls: List[Dict[str, Any]] = []
 
         for candidate in response.candidates or []:
             for part in candidate.content.parts or []:
-                if part.text:
+                # Gemini Flash Thinking marks reasoning with thought=True
+                if getattr(part, "thought", False):
+                    if part.text:
+                        thinking += part.text
+                elif part.text:
                     text += part.text
                 if part.function_call:
                     fc = part.function_call
@@ -159,6 +164,13 @@ class GeminiModel(BaseModel):
                         "name": fc.name,
                         "arguments": dict(fc.args) if fc.args else {},
                     })
+
+        # Also parse <think>...</think> blocks for models that embed CoT in text
+        import re
+        think_blocks = re.findall(r"<think>(.*?)</think>", text, re.DOTALL)
+        if think_blocks:
+            thinking = thinking + ("\n\n" if thinking else "") + "\n---\n".join(think_blocks)
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
         usage = response.usage_metadata
         input_tokens = getattr(usage, "prompt_token_count", 0) if usage else 0
@@ -170,6 +182,7 @@ class GeminiModel(BaseModel):
             output_tokens=output_tokens,
             latency_ms=latency_ms,
             tool_calls=tool_calls if tool_calls else None,
+            thinking=thinking.strip() if thinking.strip() else None,
         )
 
     def name(self) -> str:
