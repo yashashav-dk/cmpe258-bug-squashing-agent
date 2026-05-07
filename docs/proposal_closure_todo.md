@@ -12,6 +12,14 @@ Close the gap between the CMPE 258 proposal claims and the current repository st
 - [ ] UI/demo path supports proposal-level workflow claims.
 - [ ] Proposal-to-code traceability document is complete and auditable.
 
+## Implementation Status Snapshot (Metrics Workstream)
+
+- [x] Analyzer now reports latency `avg/p50/p90/p99`.
+- [x] Retry-depth proxy is reported from `planner_stats.steps` as distribution + avg/max.
+- [x] Cost fields are reported using deterministic per-model pricing assumptions.
+- [x] `cost_per_successful_fix_usd` is emitted (`null` when resolved count is zero).
+- [x] Analyzer tests updated for new metric keys and zero-success edge case.
+
 ## Team Split (3-Person Logical Ownership)
 
 ### Ownership model

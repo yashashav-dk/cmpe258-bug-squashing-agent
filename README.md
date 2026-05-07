@@ -139,6 +139,38 @@ python -m benchmark.analyze \
   --output logs/benchmark_report.json
 ```
 
+### Benchmark Report Metrics
+
+`benchmark/analyze.py` now emits per-model metrics aligned to proposal reporting:
+
+- pass-rate metrics: `runs`, `resolved`, `unresolved`, `pass_rate`, `pass_rate_wilson_95`
+- latency metrics: `latency_ms.avg`, `latency_ms.p50`, `latency_ms.p90`, `latency_ms.p99`
+- retry-depth proxy: `retry_depth.avg`, `retry_depth.max`, `retry_depth_distribution`
+- token and cost metrics:
+  - `token_usage.input_tokens`, `token_usage.output_tokens`
+  - `estimated_cost_usd.input`, `estimated_cost_usd.output`, `estimated_cost_usd.total`
+  - `cost_per_successful_fix_usd`
+- `failure_modes` and `consistency_checks`
+
+Cost is computed deterministically from token totals using model pricing assumptions in
+`benchmark/protocol.py` (`MODEL_PRICING_USD_PER_1M`). Local `gemma4` defaults to zero API token cost.
+
+### Reproducible Run -> Analyze Sequence
+
+```bash
+python -m benchmark.run_matrix \
+  --manifest benchmark/manifests/pilot_hybrid.jsonl \
+  --models gemini,qwen,minimax,gemma4 \
+  --output logs/final_results.jsonl \
+  --max-steps 15 \
+  --timeout-s 180 \
+  --repetitions 1
+
+python -m benchmark.analyze \
+  --input logs/final_results.jsonl \
+  --output logs/benchmark_report.json
+```
+
 See `benchmark/README.md` and `docs/benchmark_protocol.md` for rigorous protocol details.
 
 Recent runtime hardening:

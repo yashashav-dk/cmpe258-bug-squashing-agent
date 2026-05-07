@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 
 FAILURE_TAXONOMY = [
@@ -18,6 +18,21 @@ ACCEPTANCE_CRITERIA = [
     "Each result row includes seed, commit, model, and timing/token stats.",
     "Manifest replay with same seed reproduces identical case hash.",
 ]
+
+MODEL_PRICING_USD_PER_1M: Dict[str, Dict[str, float]] = {
+    # Gemini 2.0 Flash public list price (input/output per 1M tokens).
+    "gemini": {"input": 0.10, "output": 0.40},
+    # Together-hosted models: keep deterministic assumptions for benchmark comparison.
+    "qwen": {"input": 0.30, "output": 1.20},
+    "minimax": {"input": 0.30, "output": 1.20},
+    # Local Ollama runtime: API token cost modeled as zero by default.
+    "gemma4": {"input": 0.0, "output": 0.0},
+}
+
+PRICING_SOURCE = (
+    "Static benchmark assumptions in benchmark/protocol.py "
+    "(USD per 1M input/output tokens)."
+)
 
 
 @dataclass(frozen=True)
