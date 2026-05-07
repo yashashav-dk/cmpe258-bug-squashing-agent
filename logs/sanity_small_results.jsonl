@@ -1,0 +1,2 @@
+{"status": "completed", "model": "gemini", "resolved": true, "wall_time_ms": 120.0, "failure_mode": "none", "planner_stats": {"total_input_tokens": 1000, "total_output_tokens": 500, "steps": 2}}
+{"status": "completed", "model": "gemini", "resolved": false, "wall_time_ms": 240.0, "failure_mode": "localization_failure", "planner_stats": {"total_input_tokens": 2000, "total_output_tokens": 1500, "steps": 4}}

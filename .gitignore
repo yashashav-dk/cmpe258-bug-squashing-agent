@@ -7,6 +7,5 @@ __pycache__/
 dist/
 .DS_Store
 dataset/cases/*/memory.json
-logs/
 venv/
 .venv/

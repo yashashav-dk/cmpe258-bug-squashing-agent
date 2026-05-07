@@ -1,0 +1,22 @@
+{
+  "gemm4": {
+    "failure_modes": {
+      "none": 8
+    },
+    "latency_ms": {
+      "p50": 376374.53224999993,
+      "p90": 536212.1445830016
+    },
+    "pass_rate": 1.0,
+    "pass_rate_wilson_95": {
+      "high": 1.0,
+      "low": 0.6755843804891231
+    },
+    "resolved": 8,
+    "runs": 8,
+    "token_usage": {
+      "input_tokens": 89010,
+      "output_tokens": 33342
+    }
+  }
+}
