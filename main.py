@@ -17,9 +17,8 @@ from benchmark.ui_service import (
     run_pipeline,
 )
 from config import CASES_DIR, LOG_PATH
+from agent.case_runtime import run_case_with_pec
 from logger import Logger
-from agent.memory import Memory
-from agent.planner import Planner
 
 
 def get_model(model_name: str):
@@ -39,8 +38,8 @@ def get_model(model_name: str):
         raise ValueError(f"Unknown model: {model_name!r}. Choose from: gemini, qwen, minimax, gemma4")
 
 
-def run_case_legacy(case_id: str, model_name: str, console: Console):
-    """Deprecated case-level execution path."""
+def run_case(case_id: str, model_name: str, console: Console, max_steps: int = 15):
+    """Case-level execution path (Planner->Executor->Critic)."""
     model = get_model(model_name)
     run_logger = Logger(LOG_PATH)
     run_logger.log(
@@ -49,8 +48,6 @@ def run_case_legacy(case_id: str, model_name: str, console: Console):
         data={"model": model_name, "mode": "run_case"},
     )
     console.print(f"[dim]Model initialized: {model.name()}[/dim]")
-    planner = Planner(model=model, max_steps=15, logger=run_logger, case_id=case_id)
-    memory = Memory()
     case_dir = os.path.join(CASES_DIR, case_id)
     buggy_path = os.path.join(case_dir, "buggy.py")
 
@@ -62,37 +59,42 @@ def run_case_legacy(case_id: str, model_name: str, console: Console):
         console.print(f"[red]Error: buggy.py not found for case {case_id}[/red]")
         return
 
-    with open(buggy_path) as f:
-        buggy_code = f.read()
-
-    msg = (
-        f"Investigate this bug in {case_id}:\n```python\n{buggy_code}\n```\n"
-        f"Run `pytest test_buggy.py` in `{case_dir}`. Fix it using tools."
-    )
-
     console.print(f"\n[bold cyan]Case: {case_id} | Model: {model.name()}[/bold cyan]")
-    console.print("[bold cyan]Starting Autonomous Resolution Loop...[/bold cyan]\n")
+    console.print("[bold cyan]Starting Planner->Executor->Critic loop...[/bold cyan]\n")
 
-    result = ""
+    run_result = None
     with Status("[bold green]Agent is thinking...", spinner="dots", console=console) as status:
-        # We run in the same thread but let planner print its own output.
-        # Status will be briefly suspended by direct prints, which is acceptable.
-        result = planner.run_autonomous_loop(msg)
+        run_result = run_case_with_pec(
+            case_id=case_id,
+            model=model,
+            cases_root=CASES_DIR,
+            max_steps=max_steps,
+            logger=run_logger,
+        )
 
-    console.print(f"\n[bold green]Final Result:[/bold green]\n{result}")
+    console.print(f"\n[bold green]Final Result:[/bold green]\n{run_result.summary_text}")
+    if run_result.timeline:
+        console.print(
+            Panel(
+                "\n".join(f"- {line}" for line in run_result.timeline),
+                title="PEC Loop Trace",
+                border_style="cyan",
+            )
+        )
     run_logger.log(
         event="run_end",
         case_id=case_id,
-        data={"model": model_name, "result_preview": result[:300], "planner_stats": planner.session_stats()},
+        data={
+            "model": model_name,
+            "result_preview": run_result.summary_text[:300],
+            "planner_stats": run_result.planner_stats,
+            "resolved": run_result.resolved,
+            "iterations": run_result.iterations,
+        },
     )
 
-    # Dream consolidation
-    console.print("\n[bold purple]Consolidating Memory / Dreaming...[/bold purple]")
-    try:
-        dream_text = memory.consolidate_dream(planner.history, planner.model)
-        console.print(Panel(dream_text, title="Dream Consolidation", border_style="purple"))
-    except Exception as e:
-        console.print(f"[yellow]Dream consolidation skipped: {e}[/yellow]")
+    if run_result.final_traceback:
+        console.print(Panel(run_result.final_traceback[:1200], title="Final Traceback", border_style="yellow"))
 
 
 def _print_report(console: Console, report: dict, report_path: str) -> None:
@@ -130,6 +132,7 @@ def _run_manifest_pipeline(
         )
     console.print(f"[green]Results:[/green] {result.results_path}")
     console.print(f"[green]Report:[/green] {result.report_path}")
+    console.print(f"[green]UI Report:[/green] {result.ui_report_path}")
     _print_report(console, result.report, result.report_path)
 
 
@@ -222,12 +225,17 @@ def interactive_mode(model_name: str, max_steps: int, timeout_s: int, repetition
 
 def main():
     parser = argparse.ArgumentParser(description="Bug Squashing Agent Benchmark CLI")
-    parser.add_argument("--case", required=False, help="(Deprecated) Case ID for legacy case-folder mode.")
+    parser.add_argument("--case", required=False, help="Case ID for case-folder mode (Planner->Executor->Critic).")
     parser.add_argument("--manifest", required=False, help="Run benchmark directly for one manifest and exit.")
     parser.add_argument("--model", default="gemma4", help="Default model/model-list for benchmark execution.")
     parser.add_argument("--output", default="logs/benchmark_results.jsonl", help="Benchmark results JSONL path.")
     parser.add_argument("--report-output", default="logs/benchmark_report.json", help="Benchmark report output path.")
-    parser.add_argument("--max-steps", type=int, default=15, help="Planner max steps for benchmark runtime.")
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=15,
+        help="PEC max iterations (case-folder mode and benchmark planner).",
+    )
     parser.add_argument("--timeout-s", type=int, default=180, help="Timeout used by benchmark runtime (seconds).")
     parser.add_argument("--repetitions", type=int, default=1, help="Benchmark repetitions.")
     args = parser.parse_args()
@@ -239,8 +247,7 @@ def main():
     ))
 
     if args.case:
-        console.print("[yellow]Warning: --case mode is deprecated. Prefer manifest workflow.[/yellow]")
-        run_case_legacy(case_id=args.case, model_name=args.model, console=console)
+        run_case(case_id=args.case, model_name=args.model, console=console, max_steps=args.max_steps)
         return
 
     if args.manifest:

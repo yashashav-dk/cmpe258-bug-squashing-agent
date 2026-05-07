@@ -5,9 +5,10 @@ MAX_RETRIES = 5
 MAX_MEMORY_TOKENS = 2000
 
 # Model
-GEMINI_MODEL = "gemini-2.0-flash"  # gemini-2.0-flash is available; change to gemini-1.5-pro if needed
+# Gemini API id (REST / google-genai SDK). Alias: gemini-flash-latest -> current Flash.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 GEMMA4_MODEL = "gemma4:latest"
-QWEN_MODEL = "Qwen/Qwen2.5-72B-Instruct-Turbo"
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen/qwen-2.5-72b-instruct")
 MINIMAX_MODEL = "MiniMaxAI/MiniMax-M2.5"
 
 # Paths

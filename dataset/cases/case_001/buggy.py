@@ -1,2 +1,2 @@
 def add_numbers(a: int, b: int):
-    return a + b
+    return str(a + b)  # Bug: returns str instead of int

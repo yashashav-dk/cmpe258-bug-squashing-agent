@@ -51,7 +51,7 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 | Model | Role | Status |
 |-------|------|--------|
 | Gemini 2.0 Flash | Baseline | ✅ Fully wired (new google-genai SDK) |
-| Qwen-2.5 72B | Open SOTA | ✅ Implemented via Together AI |
+| Qwen2.5 72B Instruct | Open SOTA | ✅ OpenRouter (`qwen/qwen-2.5-72b-instruct`) |
 | MiniMax-M2.5 | Open MoE | ✅ Implemented via Together AI |
 | Gemma 4 | Local / Ollama | ✅ Implemented via Ollama |
 
@@ -66,7 +66,7 @@ Planner(LLM) → JSON patch plan → Executor(apply + pytest) → Critic(pass/re
 - [x] Structured JSON-lines logging (prompts, patches, verdicts, token counts, latency)
 - [x] 22 unit tests, all passing
 - [x] Gemini 2.0 Flash (new google-genai SDK)
-- [x] Qwen-2.5 72B via Together AI
+- [x] Qwen2.5 72B Instruct via OpenRouter
 - [x] MiniMax-M2.5 via Together AI
 - [x] Gemma 4 via Ollama (local, private)
 - [x] Interactive Rich CLI (`main.py`)
@@ -88,7 +88,7 @@ git clone https://github.com/yashashav-dk/cmpe258-bug-squashing-agent
 cd cmpe258-bug-squashing-agent
 pip install -r requirements.txt
 cp .env.example .env
-# Fill in GEMINI_API_KEY and/or TOGETHER_API_KEY in .env
+# Fill in GEMINI_API_KEY, OPENROUTER_API_KEY (Qwen), and/or TOGETHER_API_KEY (MiniMax) in .env
 
 # CLI mode
 python3 main.py --case case_001 --model gemini
@@ -192,7 +192,7 @@ Recent runtime hardening:
 ├── models/
 │   ├── base.py          # BaseModel ABC + ModelResponse dataclass
 │   ├── gemini.py        # Gemini client (wired)
-│   ├── qwen.py          # Qwen stub
+│   ├── qwen.py          # Qwen via OpenRouter
 │   └── minimax.py       # MiniMax stub
 ├── dataset/
 │   ├── cases/           # Bug cases (buggy.py, test_buggy.py, golden.py)

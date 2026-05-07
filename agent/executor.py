@@ -28,8 +28,14 @@ class Executor:
         target_path = self._validate_scope(patch["file"], case_id)
         start, end = patch["line_range"]  # 1-indexed, inclusive
 
-        with open(target_path) as f:
-            lines = f.readlines()
+        if not os.path.exists(target_path):
+            raise PatchError(f"Target file not found for patch: {patch['file']}")
+
+        try:
+            with open(target_path) as f:
+                lines = f.readlines()
+        except OSError as e:
+            raise PatchError(f"Failed reading target file {patch['file']!r}: {e}")
 
         new_lines = lines[: start - 1] + [patch["proposed_fix"]] + lines[end:]
         new_content = "".join(new_lines)

@@ -6,8 +6,11 @@ Usage:
     python3 eval_report.py
     python3 eval_report.py --file path/to/eval_results.jsonl
 """
+from __future__ import annotations
+
 import argparse
 import json
+import math
 import os
 from collections import defaultdict
 
@@ -17,6 +20,20 @@ from rich.panel import Panel
 from rich import box
 
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "logs", "eval_results.jsonl")
+
+
+def _percentile(sorted_vals: list[float], q: float) -> float | None:
+    """q in [0,1]; linear interpolation between closest ranks."""
+    if not sorted_vals:
+        return None
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    pos = q * (len(sorted_vals) - 1)
+    lo = int(math.floor(pos))
+    hi = int(math.ceil(pos))
+    if lo == hi:
+        return sorted_vals[lo]
+    return sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * (pos - lo)
 
 
 def load_results(path: str) -> list:
@@ -63,8 +80,14 @@ def main():
     model_table.add_column("Pass Rate", justify="right")
     model_table.add_column("Avg Steps", justify="right")
     model_table.add_column("Avg Latency", justify="right")
-    model_table.add_column("p50 Latency", justify="right")
-    model_table.add_column("p90 Latency", justify="right")
+    model_table.add_column("p50", justify="right")
+    model_table.add_column("p90", justify="right")
+    model_table.add_column("p95", justify="right")
+    model_table.add_column("p99", justify="right")
+    model_table.add_column("Tokens In/Out", justify="right")
+    model_table.add_column("Est. USD*", justify="right")
+
+    blend_rate = os.environ.get("EVAL_USD_PER_MILLION_TOKENS", "").strip()
 
     for model, runs in sorted(by_model.items()):
         passed = sum(1 for r in runs if r["passed"])
@@ -72,13 +95,41 @@ def main():
         pass_rate = f"{100*passed/total:.1f}%" if total else "N/A"
         steps = [r["steps"] for r in runs]
         avg_steps = f"{sum(steps)/len(steps):.1f}" if steps else "N/A"
-        latencies = sorted(r["latency_ms"] for r in runs)
-        avg_lat = f"{sum(latencies)/len(latencies)/1000:.1f}s" if latencies else "N/A"
-        p50 = f"{latencies[len(latencies)//2]/1000:.1f}s" if latencies else "N/A"
-        p90 = f"{latencies[int(len(latencies)*0.9)]/1000:.1f}s" if latencies else "N/A"
-        model_table.add_row(model, str(total), str(passed), pass_rate, avg_steps, avg_lat, p50, p90)
+        latencies = sorted(float(r["latency_ms"]) for r in runs)
+
+        def fmt_p(q: float) -> str:
+            v = _percentile(latencies, q)
+            return f"{v / 1000:.1f}s" if v is not None else "N/A"
+
+        avg_lat = f"{sum(latencies) / len(latencies) / 1000:.1f}s" if latencies else "N/A"
+        p50 = fmt_p(0.50)
+        p90 = fmt_p(0.90)
+        p95 = fmt_p(0.95)
+        p99 = fmt_p(0.99)
+
+        tin = sum(int(r.get("input_tokens", 0)) for r in runs)
+        tout = sum(int(r.get("output_tokens", 0)) for r in runs)
+        tok_str = f"{tin:,}/{tout:,}"
+
+        if blend_rate:
+            try:
+                rate = float(blend_rate)
+                usd = rate * (tin + tout) / 1_000_000.0
+                usd_str = f"${usd:.4f}"
+            except ValueError:
+                usd_str = "bad EVAL_*"
+        else:
+            usd_str = "—"
+
+        model_table.add_row(
+            model, str(total), str(passed), pass_rate, avg_steps, avg_lat, p50, p90, p95, p99, tok_str, usd_str
+        )
 
     console.print(model_table)
+    console.print(
+        "[dim]* Est. USD = (input+output tokens)/1e6 × $EVAL_USD_PER_MILLION_TOKENS when set "
+        "(blended placeholder; omit for local/Ollama).[/dim]"
+    )
 
     # === Per-tier summary ===
     def tier_for(case_id: str) -> str:

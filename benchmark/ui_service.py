@@ -5,16 +5,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from benchmark.materialize_ui_report import materialize_ui_report, write_ui_report
+
 
 @dataclass
 class BenchmarkRunResult:
+    run_id: str
     results_path: str
     report_path: str
+    ui_report_path: str
     run_stdout: str
     run_stderr: str
     analyze_stdout: str
     analyze_stderr: str
     report: Dict[str, dict]
+    ui_report: Dict[str, object]
 
 
 def list_manifests(manifests_dir: str = "benchmark/manifests") -> List[str]:
@@ -116,6 +121,7 @@ def run_pipeline(
     models: str,
     output: str = "logs/benchmark_results.jsonl",
     report_output: str = "logs/benchmark_report.json",
+    ui_report_output: str = "",
     max_steps: int = 15,
     timeout_s: int = 180,
     repetitions: int = 1,
@@ -135,7 +141,17 @@ def run_pipeline(
     if run_proc.returncode != 0:
         raise RuntimeError(f"run_matrix failed:\n{run_proc.stdout}\n{run_proc.stderr}")
 
-    analyze_proc = analyze(input_path=output, output=report_output)
+    actual_results_path = Path(output).resolve()
+    run_id = ""
+    for line in run_proc.stdout.splitlines():
+        if line.startswith("[run_matrix] RUN_ID="):
+            run_id = line.split("=", 1)[1].strip()
+        if line.startswith("[run_matrix] RESULTS_PATH="):
+            resolved = line.split("=", 1)[1].strip()
+            if resolved:
+                actual_results_path = Path(resolved)
+
+    analyze_proc = analyze(input_path=str(actual_results_path), output=report_output)
     if analyze_proc.returncode != 0:
         raise RuntimeError(f"analyze failed:\n{analyze_proc.stdout}\n{analyze_proc.stderr}")
 
@@ -144,12 +160,23 @@ def run_pipeline(
     if report_path.exists():
         report = json.loads(report_path.read_text(encoding="utf-8"))
 
+    ui_report = materialize_ui_report(results_path=str(actual_results_path), manifest_path=manifest)
+    resolved_ui_output = (
+        Path(ui_report_output).resolve()
+        if ui_report_output
+        else actual_results_path.with_name("ui_report.json")
+    )
+    ui_report_path = write_ui_report(ui_report, str(resolved_ui_output))
+
     return BenchmarkRunResult(
-        results_path=str(Path(output).resolve()),
+        run_id=run_id,
+        results_path=str(actual_results_path.resolve()),
         report_path=str(report_path.resolve()),
+        ui_report_path=ui_report_path,
         run_stdout=run_proc.stdout,
         run_stderr=run_proc.stderr,
         analyze_stdout=analyze_proc.stdout,
         analyze_stderr=analyze_proc.stderr,
         report=report,
+        ui_report=ui_report,
     )

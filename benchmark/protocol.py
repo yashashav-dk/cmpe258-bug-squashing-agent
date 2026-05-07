@@ -22,8 +22,8 @@ ACCEPTANCE_CRITERIA = [
 MODEL_PRICING_USD_PER_1M: Dict[str, Dict[str, float]] = {
     # Gemini 2.0 Flash public list price (input/output per 1M tokens).
     "gemini": {"input": 0.10, "output": 0.40},
-    # Together-hosted models: keep deterministic assumptions for benchmark comparison.
-    "qwen": {"input": 0.30, "output": 1.20},
+    # OpenRouter list pricing for qwen/qwen-2.5-72b-instruct (USD per 1M tokens).
+    "qwen": {"input": 0.36, "output": 0.40},
     "minimax": {"input": 0.30, "output": 1.20},
     # Local Ollama runtime: API token cost modeled as zero by default.
     "gemma4": {"input": 0.0, "output": 0.0},

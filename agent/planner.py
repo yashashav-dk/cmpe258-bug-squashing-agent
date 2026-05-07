@@ -15,6 +15,16 @@ Investigate the error, use tools to explore the codebase and apply a fix, and ve
 When the tests pass, output a summary of what you did and say 'RESOLVED'.
 """
 
+PATCH_PLAN_SYSTEM_PROMPT = """\
+You are the Planner in a Planner-Executor-Critic bug-fixing loop.
+Return ONLY a raw JSON object with keys:
+- file: string (relative path to modify; when the user names an exact path, use that path verbatim)
+- line_range: [start_line, end_line] (1-indexed inclusive; both integers)
+- root_cause: string
+- proposed_fix: string (replacement text for the range)
+Do not include markdown fences or any extra text.
+"""
+
 class Planner:
     def __init__(
         self,
@@ -95,15 +105,98 @@ class Planner:
             kind = "tool_result"
         return {"status": status, "kind": kind, "content": str(content)}
 
+    @staticmethod
+    def _extract_json_object(raw: str) -> str:
+        text = (raw or "").strip()
+        if text.startswith("{") and text.endswith("}"):
+            return text
+        fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
+        if fenced:
+            return fenced.group(1).strip()
+        start = text.find("{")
+        end = text.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise ValueError("Planner response is not valid JSON object text")
+        return text[start : end + 1]
+
+    @staticmethod
+    def _validate_patch_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
+        required = ("file", "line_range", "root_cause", "proposed_fix")
+        for key in required:
+            if key not in plan:
+                raise ValueError(f"Missing required patch key: {key}")
+        if not isinstance(plan["file"], str) or not plan["file"].strip():
+            raise ValueError("patch.file must be non-empty string")
+        line_range = plan["line_range"]
+        if (
+            not isinstance(line_range, list)
+            or len(line_range) != 2
+            or not all(isinstance(v, int) for v in line_range)
+        ):
+            raise ValueError("patch.line_range must be [start:int, end:int]")
+        if line_range[0] <= 0 or line_range[1] < line_range[0]:
+            raise ValueError("patch.line_range must be positive and start<=end")
+        if not isinstance(plan["root_cause"], str) or not plan["root_cause"].strip():
+            raise ValueError("patch.root_cause must be non-empty string")
+        if not isinstance(plan["proposed_fix"], str) or not plan["proposed_fix"]:
+            raise ValueError("patch.proposed_fix must be non-empty string")
+        return {
+            "file": plan["file"].strip(),
+            "line_range": [int(line_range[0]), int(line_range[1])],
+            "root_cause": plan["root_cause"].strip(),
+            "proposed_fix": plan["proposed_fix"],
+        }
+
+    def propose_patch_plan(
+        self,
+        buggy_code: str,
+        traceback: str,
+        memory: Memory,
+        retry_context: str = "",
+        patch_file: str = "",
+    ) -> Dict[str, Any]:
+        memory_summary = memory.get_summary(max_tokens=400) if memory else ""
+        user_prompt = (
+            "Analyze the failing Python file and traceback, then output one JSON patch plan.\n\n"
+        )
+        if patch_file.strip():
+            user_prompt += f'Set JSON "file" exactly to "{patch_file.strip()}" (relative path).\n\n'
+        user_prompt += (
+            f"Buggy code:\n```python\n{buggy_code}\n```\n\n"
+            f"Traceback:\n{traceback}\n\n"
+            f"Memory summary:\n{memory_summary or '(none)'}\n"
+        )
+        if retry_context:
+            user_prompt += f"\nRetry guidance:\n{retry_context}\n"
+
+        response = self.model.chat(
+            messages=[{"role": "user", "content": user_prompt}],
+            system_instruction=PATCH_PLAN_SYSTEM_PROMPT,
+        )
+        self._session_stats["steps"] += 1
+        self._session_stats["total_input_tokens"] += response.input_tokens
+        self._session_stats["total_output_tokens"] += response.output_tokens
+        self._session_stats["total_latency_ms"] += response.latency_ms
+        self._log(
+            "planner_patch_plan_response",
+            {
+                "text_preview": (response.text or "")[:400],
+                "input_tokens": response.input_tokens,
+                "output_tokens": response.output_tokens,
+                "latency_ms": response.latency_ms,
+            },
+        )
+
+        payload = self._extract_json_object(response.text or "")
+        parsed = json.loads(payload)
+        return self._validate_patch_plan(parsed)
+
     def plan(self, buggy_code: str, traceback: str, memory: Memory) -> dict:
         """
         Legacy entry point for compatibility if needed. It triggers the Autonomous loop.
         In the new architecture, we prefer `run_autonomous_loop()`.
         """
-        msg = f"Buggy Code:\n```python\n{buggy_code}\n```\nTraceback:\n{traceback}\nFix the bug."
-        self.run_autonomous_loop(msg)
-        # Mocking legacy patch response format
-        return {"file": "buggy.py", "line_range": [0,0], "root_cause": "Fixed autonomously", "proposed_fix": "Applied via tools"}
+        return self.propose_patch_plan(buggy_code=buggy_code, traceback=traceback, memory=memory)
 
     def run_autonomous_loop(self, user_objective: str) -> str:
         self._target_test_command = self._extract_target_test_command(user_objective)
