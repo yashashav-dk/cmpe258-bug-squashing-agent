@@ -9,3 +9,5 @@ dist/
 dataset/cases/*/memory.json
 venv/
 .venv/
+logs/runs/
+.claude/
