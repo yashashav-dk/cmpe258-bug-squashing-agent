@@ -34,8 +34,11 @@ def get_model(model_name: str):
     elif model_name == "gemma4":
         from models.gemma4 import Gemma4Model
         return Gemma4Model()
+    elif model_name in ("gemini_or", "qwen_or"):
+        from models.openrouter import OpenRouterModel, OPENROUTER_MODELS
+        return OpenRouterModel(OPENROUTER_MODELS[model_name])
     else:
-        raise ValueError(f"Unknown model: {model_name!r}. Choose from: gemini, qwen, minimax, gemma4")
+        raise ValueError(f"Unknown model: {model_name!r}. Choose from: gemini, qwen, minimax, gemma4, gemini_or, qwen_or")
 
 
 def run_case(case_id: str, model_name: str, console: Console, max_steps: int = 15):

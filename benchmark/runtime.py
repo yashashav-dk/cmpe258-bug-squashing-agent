@@ -38,12 +38,22 @@ def get_model(model_name: str):
         from models.minimax import MiniMaxModel
 
         return MiniMaxModel()
-    if normalized == "gemma4":
-        from models.gemma4 import Gemma4Model
+    if normalized in ("gemma4", "gemma3", "gemma3_4b"):
+        from models.openrouter import OpenRouterModel, OPENROUTER_MODELS
 
-        # Benchmark runtime should always target local Ollama unless explicitly overridden.
-        endpoint = os.getenv("BENCHMARK_OLLAMA_ENDPOINT", "http://127.0.0.1:11434")
-        return Gemma4Model(endpoint=endpoint)
+        return OpenRouterModel(OPENROUTER_MODELS[normalized])
+    if normalized in ("gemini_or", "qwen_or"):
+        from models.openrouter import OpenRouterModel, OPENROUTER_MODELS
+
+        return OpenRouterModel(OPENROUTER_MODELS[normalized])
+    if normalized in ("gemini3flash", "gemini3pro"):
+        from models.gemini import GeminiModel
+
+        model_map = {
+            "gemini3flash": "gemini-3-flash-preview",
+            "gemini3pro": "gemini-3-pro-preview",
+        }
+        return GeminiModel(model_name=model_map[normalized])
     raise ValueError(f"Unknown model: {model_name}")
 
 

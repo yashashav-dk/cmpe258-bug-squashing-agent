@@ -24,9 +24,19 @@ MODEL_PRICING_USD_PER_1M: Dict[str, Dict[str, float]] = {
     "gemini": {"input": 0.10, "output": 0.40},
     # OpenRouter list pricing for qwen/qwen-2.5-72b-instruct (USD per 1M tokens).
     "qwen": {"input": 0.36, "output": 0.40},
+    # OpenRouter-routed models: same underlying pricing as their native equivalents.
+    "qwen_or": {"input": 0.36, "output": 0.40},
+    "gemini_or": {"input": 0.10, "output": 0.40},
+    # Gemini 3 via native google-genai SDK (USD per 1M tokens, Google AI Studio list price).
+    "gemini3flash": {"input": 0.10, "output": 0.40},
+    "gemini3pro": {"input": 1.25, "output": 5.00},
     "minimax": {"input": 0.30, "output": 1.20},
-    # Local Ollama runtime: API token cost modeled as zero by default.
-    "gemma4": {"input": 0.0, "output": 0.0},
+    # Gemma 4 via OpenRouter (google/gemma-4-31b-it).
+    "gemma4": {"input": 0.12, "output": 0.12},
+    # Gemma 3 27B via OpenRouter (google/gemma-3-27b-it).
+    "gemma3": {"input": 0.10, "output": 0.10},
+    # Gemma 3 4B via OpenRouter (google/gemma-3-4b-it).
+    "gemma3_4b": {"input": 0.03, "output": 0.03},
 }
 
 PRICING_SOURCE = (
