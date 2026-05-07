@@ -20,6 +20,7 @@ class CaseRuntimeResult:
     planner_stats: Dict[str, float]
     iterations: int
     timeline: List[str]
+    memory_path: Optional[str] = None
 
 
 def run_case_with_pec(
@@ -46,6 +47,7 @@ def run_case_with_pec(
     executor = Executor(cases_root=cases_root)
     critic = Critic(max_retries=max_steps)
     memory = Memory()
+    memory_path = str(case_dir / "memory.json")
 
     prev_cwd = os.getcwd()
     os.chdir(str(case_dir))
@@ -98,6 +100,7 @@ def run_case_with_pec(
                     traceback=traceback,
                     passed=passed,
                 )
+                memory.save(memory_path)
                 verdict = critic.evaluate(
                     passed=passed,
                     traceback=traceback,
@@ -115,6 +118,7 @@ def run_case_with_pec(
                         planner_stats=planner.session_stats(),
                         iterations=iteration,
                         timeline=timeline,
+                        memory_path=memory_path,
                     )
                 if verdict == CaseResult.UNRESOLVED:
                     timeline.append(f"Iteration {iteration}: critic verdict=UNRESOLVED.")
@@ -162,6 +166,7 @@ def run_case_with_pec(
             planner_stats=planner.session_stats(),
             iterations=max_steps,
             timeline=timeline,
+            memory_path=memory_path,
         )
     finally:
         os.chdir(prev_cwd)

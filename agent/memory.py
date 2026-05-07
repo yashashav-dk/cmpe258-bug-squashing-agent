@@ -53,6 +53,16 @@ class Memory:
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
+    @classmethod
+    def load(cls, path: str) -> "Memory":
+        m = cls()
+        with open(path) as f:
+            data = json.load(f)
+        m.edit_history = data.get("edit_history", [])
+        m.error_evolution = data.get("error_evolution", [])
+        m.dead_end_registry = set(data.get("dead_end_registry", []))
+        return m
+
     def consolidate_dream(self, history: list, model) -> str:
         """
         Similar to Claude-Code's 'Dream' system, this reviews the interaction history
