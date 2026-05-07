@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Autonomous Bug-Squashing Agent - CMPE 258</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#f8f9fa;--card:#fff;--border:#dee2e6;
+  --blue:#4285F4;--green:#34A853;--orange:#FF6D00;--purple:#AB47BC;
+  --text:#212529;--muted:#6c757d;
+}
+.reveal{font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);font-size:22px}
+.reveal .slides{text-align:left}
+.reveal .slides>section,
+.reveal .slides>section.present,
+.reveal .slides>section.stack{padding:32px 44px !important;box-sizing:border-box !important}
+.reveal h1{font-size:2.0rem;margin-bottom:6px;color:var(--text);text-transform:none;letter-spacing:0}
+.reveal h2{font-size:1.3rem;margin:0 0 14px;border-bottom:2px solid var(--border);padding-bottom:6px;text-transform:uppercase;letter-spacing:.03em;color:#444}
+.reveal h3{font-size:.95rem;font-weight:600;margin-bottom:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.reveal p,.reveal li{font-size:.85rem;line-height:1.55}
+.reveal ul{display:block;margin-left:18px}
+.reveal ul li{margin-bottom:5px}
+
+.meta{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+.abstract{background:#e8f0fe;border-left:4px solid var(--blue);padding:14px 16px;border-radius:4px;line-height:1.6;font-size:.85rem}
+.reveal .slides .grid2{display:grid !important;grid-template-columns:1fr 1fr !important;gap:14px;width:100%}
+.reveal .slides .grid3{display:grid !important;grid-template-columns:1fr 1fr 1fr !important;gap:14px;width:100%}
+.reveal .slides .grid4{display:grid !important;grid-template-columns:repeat(4,1fr) !important;gap:12px;width:100%}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;min-width:0}
+.kpi{text-align:center}
+.kpi .val{font-size:1.7rem;font-weight:700;color:var(--blue)}
+.kpi .lbl{font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.3}
+.chart-wrap{position:relative;height:220px;width:100%}
+.chart-wrap-md{position:relative;height:240px;width:100%}
+.chart-wrap-lg{position:relative;height:280px;width:100%}
+.chart-wrap canvas,.chart-wrap-md canvas,.chart-wrap-lg canvas{max-width:100% !important}
+
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{background:#f1f3f4;text-align:left;padding:6px 8px;border:1px solid var(--border);font-weight:600}
+td{padding:5px 8px;border:1px solid var(--border);vertical-align:middle}
+.pass{color:#1e8e3e;font-weight:700}
+.fail{color:#c5221f}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:600;white-space:nowrap}
+.badge-easy{background:#d4edda;color:#155724}
+.badge-medium{background:#fff3cd;color:#856404}
+.badge-hard{background:#f8d7da;color:#721c24}
+.badge-synthetic{background:#e3f2fd;color:#0d47a1}
+.badge-oss{background:#fce4ec;color:#880e4f}
+.highlight{background:#e8f5e9 !important}
+.note{font-size:.75rem;color:var(--muted);margin-top:8px;line-height:1.5}
+.conclusion{background:#fff8e1;border-left:4px solid #f9a825;padding:14px 16px;border-radius:4px;line-height:1.6;font-size:.82rem}
+.repo-tag{display:inline-block;background:#f1f3f4;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:monospace;font-size:.78rem}
+code{background:#f1f3f4;padding:1px 5px;border-radius:3px;font-size:.85em}
+
+/* PEC pipeline diagram */
+.pec{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0}
+.pec-node{padding:14px 18px;border-radius:8px;background:var(--card);border:2px solid var(--blue);font-weight:600;font-size:.9rem;text-align:center;min-width:120px}
+.pec-node.exec{border-color:var(--green)}
+.pec-node.crit{border-color:var(--orange)}
+.pec-node.mem{border-color:var(--purple);background:#faf3fc}
+.pec-arrow{font-size:1.4rem;color:var(--muted);font-weight:700}
+.pec-row2{display:flex;justify-content:center;margin-top:8px;font-size:.8rem;color:var(--muted)}
+
+/* Demo slide */
+.demo-slide{display:flex;align-items:center;justify-content:center;height:100%}
+.demo-slide h1{font-size:5rem;color:var(--blue);text-align:center;border:none;text-transform:uppercase;letter-spacing:.1em}
+
+.title-slide h1{font-size:2.2rem;margin-bottom:14px}
+.title-slide .authors{font-size:1.1rem;color:var(--text);margin:18px 0 6px;line-height:1.7}
+.title-slide .course{color:var(--muted);font-size:.95rem;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- Slide 1: Title -->
+<section class="title-slide">
+  <h1>Autonomous Bug-Squashing Agent</h1>
+  <p class="meta">Planner &rarr; Executor &rarr; Critic loop for end-to-end Python bug repair</p>
+  <div class="abstract">
+    <strong>Abstract.</strong>
+    LLM agent that locates and fixes Python bugs autonomously - read code, propose patch, run pytest, iterate until green.
+    Evaluated on 52 synthetic cases and 3 injected defects in <em>pallets/click</em> v8.3.2 across 4 LLMs.
+    Best result: <strong>57% synth pass</strong> (Qwen 2.5 72B) and <strong>33% OSS pass</strong> (Gemini 3 Pro),
+    with <strong>3.1&ndash;3.4&times; token reduction</strong> and <strong>2.5&ndash;2.7&times; latency improvement</strong>
+    over a Gemini CLI baseline at identical resolution outcomes.
+  </div>
+  <p class="authors">
+    <strong>Saransh Soni</strong> &nbsp;&middot;&nbsp;
+    <strong>Pranav Jitendra Trivedi</strong> &nbsp;&middot;&nbsp;
+    <strong>Yashashav Devalapalli Kamalraj</strong>
+  </p>
+  <p class="course">CMPE 258 - Spring 2026 &nbsp;|&nbsp; May 7, 2026</p>
+</section>
+
+<!-- Slide 2: PEC Architecture -->
+<section>
+  <h2>1. Architecture - Planner &rarr; Executor &rarr; Critic</h2>
+  <div class="pec">
+    <div class="pec-node">Planner<br/><span style="font-size:.7rem;color:var(--muted);font-weight:400">LLM + tools</span></div>
+    <span class="pec-arrow">&rarr;</span>
+    <div class="pec-node exec">Executor<br/><span style="font-size:.7rem;color:var(--muted);font-weight:400">apply + pytest</span></div>
+    <span class="pec-arrow">&rarr;</span>
+    <div class="pec-node crit">Critic<br/><span style="font-size:.7rem;color:var(--muted);font-weight:400">PASS / RETRY / GIVE UP</span></div>
+    <span class="pec-arrow">&larr;</span>
+    <div class="pec-node mem">Memory<br/><span style="font-size:.7rem;color:var(--muted);font-weight:400">dead-end fingerprints</span></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h3>Tools available to Planner</h3>
+      <ul>
+        <li><code>read_file(path, start, end)</code> - targeted reads, not full file</li>
+        <li><code>edit_file(path, line_range, new_block)</code> - atomic replace, AST-validated</li>
+        <li><code>run_bash(cmd)</code> - pytest oracle, sandboxed scope</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Key invariants</h3>
+      <ul>
+        <li><strong>Per-case Memory</strong> - fresh state, no cross-case leakage</li>
+        <li><strong>Atomic patch</strong> - write <code>.tmp</code> &rarr; <code>ast.parse()</code> &rarr; <code>os.replace()</code></li>
+        <li><strong>Path-traversal guard</strong> - <code>realpath</code> scope check before write</li>
+        <li><strong>Golden never fed</strong> - used only for post-hoc evaluation</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 3: Two Benchmarks -->
+<section>
+  <h2>2. Two Complementary Benchmarks</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3><span class="badge badge-synthetic">Synthetic Dataset</span></h3>
+      <table>
+        <tr><td><strong>Total cases</strong></td><td>52</td></tr>
+        <tr><td><strong>Valid runs</strong></td><td>49 (3 skipped: pre-passing)</td></tr>
+        <tr><td><strong>Difficulty tiers</strong></td><td>Easy (40), Medium (9)</td></tr>
+        <tr><td><strong>Source</strong></td><td>Algorithmic mutations</td></tr>
+        <tr><td><strong>Model evaluated</strong></td><td>Qwen 2.5 72B (OpenRouter)</td></tr>
+        <tr><td><strong>Budget</strong></td><td>Max 10 retries, 180 s timeout</td></tr>
+      </table>
+      <p class="note">Controlled - isolates agent capability from repo complexity.</p>
+    </div>
+    <div class="card">
+      <h3><span class="badge badge-oss">OSS Repository</span></h3>
+      <table>
+        <tr><td><strong>Repository</strong></td><td><span class="repo-tag">pallets/click</span></td></tr>
+        <tr><td><strong>Stars</strong></td><td>~15,000 &nbsp;|&nbsp; 1,200+ source lines</td></tr>
+        <tr><td><strong>Pinned commit</strong></td><td><span class="repo-tag">052c0060</span> (v8.3.2)</td></tr>
+        <tr><td><strong>Injection</strong></td><td>Deterministic string replace (idempotent)</td></tr>
+        <tr><td><strong>Oracle</strong></td><td>Repository&rsquo;s own pytest suite</td></tr>
+        <tr><td><strong>Models evaluated</strong></td><td>4 (Pro, Flash, Qwen, Gemma)</td></tr>
+      </table>
+      <p class="note">Real complexity - large files, multi-module dependencies.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 4: Synthetic Results -->
+<section>
+  <h2>3. Synthetic Dataset Results</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Pass Rate by Difficulty</h3>
+      <div class="chart-wrap"><canvas id="synthPassChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Failure Mode Breakdown (49 cases)</h3>
+      <div class="chart-wrap"><canvas id="synthFailChart"></canvas></div>
+    </div>
+  </div>
+  <div class="grid3" style="margin-top:14px">
+    <div class="card kpi"><div class="val" style="font-size:1.4rem">65%</div><div class="lbl">Easy pass rate (26/40)</div></div>
+    <div class="card kpi"><div class="val" style="font-size:1.4rem;color:#FF6D00">22%</div><div class="lbl">Medium pass rate (2/9)</div></div>
+    <div class="card kpi"><div class="val" style="font-size:1.4rem;color:#34A853">32 s</div><div class="lbl">Average time per case</div></div>
+  </div>
+  <p class="note">Localization failure (35%) dominates medium tier - model identifies symptom, patches wrong line.</p>
+</section>
+
+<!-- Slide 5: OSS Bug Catalog -->
+<section>
+  <h2>4. OSS Injected Bug Catalog</h2>
+  <div class="card">
+    <table>
+      <tr><th>Case</th><th>File</th><th>Injection</th><th>Tier</th></tr>
+      <tr>
+        <td><code>split_arg_upper</code></td>
+        <td style="font-family:monospace;font-size:.78rem">shell_completion.py</td>
+        <td><code>token &rarr; token.upper()</code></td>
+        <td><span class="badge badge-easy">Easy</span></td>
+      </tr>
+      <tr>
+        <td><code>int_convert_off_by_one</code></td>
+        <td style="font-family:monospace;font-size:.78rem">types.py</td>
+        <td><code>value &rarr; value + 1</code></td>
+        <td><span class="badge badge-medium">Medium</span></td>
+      </tr>
+      <tr>
+        <td><code>parser_prefixes_truncated</code></td>
+        <td style="font-family:monospace;font-size:.78rem">parser.py</td>
+        <td><code>{"-","--"} &rarr; {"-"}</code></td>
+        <td><span class="badge badge-hard">Hard</span></td>
+      </tr>
+    </table>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h3>Preflight contract</h3>
+      <ul>
+        <li>Test must <strong>FAIL</strong> after injection</li>
+        <li>Test must <strong>PASS</strong> after correct fix</li>
+        <li>Pre-passing cases marked <code>invalid_benchmark_case</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Why these three?</h3>
+      <ul>
+        <li><strong>Easy</strong> - single-token mutation in a small function</li>
+        <li><strong>Medium</strong> - type coercion bug, behavior visible only on specific inputs</li>
+        <li><strong>Hard</strong> - argument-parser semantics, multi-file ripple</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 6: OSS Resolution Matrix -->
+<section>
+  <h2>5. OSS Resolution Matrix &amp; Failure Profile</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Pass Rate (% of 3 cases)</h3>
+      <div class="chart-wrap"><canvas id="ossPassChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Per-Case Resolution</h3>
+      <table>
+        <tr><th>Model</th><th>Easy</th><th>Med</th><th>Hard</th><th>Total</th></tr>
+        <tr class="highlight"><td><strong>Gemini 3 Pro</strong></td><td class="pass">&#10003;</td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td><strong>1/3</strong></td></tr>
+        <tr><td><strong>Gemini 3 Flash</strong></td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td><strong>0/3</strong></td></tr>
+        <tr><td><strong>Qwen 2.5 72B (OR)</strong></td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td><strong>0/3</strong></td></tr>
+        <tr><td><strong>Gemma 3 27B</strong></td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td class="fail">&#10007;</td><td><strong>0/3</strong></td></tr>
+      </table>
+      <p class="note">
+        Gemini 3 Pro resolves Easy in <strong>2 retries / 119 s</strong>.
+        87% of all OSS failures = pure <strong>localization</strong> (correct file, wrong line).
+        Zero false-resolved, zero test regressions - patches syntactically safe.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 7: Efficiency vs Baseline -->
+<section>
+  <h2>6. Efficiency: Agent vs Gemini CLI Baseline</h2>
+  <div class="grid3">
+    <div class="card">
+      <h3>Input Tokens</h3>
+      <div class="chart-wrap"><canvas id="inputTokChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Output Tokens</h3>
+      <div class="chart-wrap"><canvas id="outputTokChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Latency (avg)</h3>
+      <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <table>
+      <tr>
+        <th>Model</th>
+        <th>Input cut</th><th>Output cut</th><th>Latency speedup</th>
+      </tr>
+      <tr><td><strong>Gemini 3 Pro</strong></td><td class="pass"><strong>3.31&times;</strong></td><td class="pass">2.43&times;</td><td class="pass">2.59&times;</td></tr>
+      <tr><td><strong>Gemini 3 Flash</strong></td><td class="pass"><strong>3.08&times;</strong></td><td class="pass">2.21&times;</td><td class="pass">2.53&times;</td></tr>
+      <tr><td><strong>Qwen 2.5 72B (OR)</strong></td><td class="pass"><strong>3.44&times;</strong></td><td class="pass">2.58&times;</td><td class="pass">2.67&times;</td></tr>
+      <tr><td><strong>Gemma 3 27B</strong></td><td class="pass"><strong>3.19&times;</strong></td><td class="pass">2.35&times;</td><td class="pass">2.72&times;</td></tr>
+    </table>
+    <p class="note">Identical resolution outcomes - efficiency gains are purely architectural.</p>
+  </div>
+</section>
+
+<!-- Slide 8: What Drives What -->
+<section>
+  <h2>7. What Drives Performance</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Model reasoning &rarr; Pass rate</h3>
+      <p>
+        Stronger reasoning models fix more bugs, independent of agent scaffolding.
+        Gemini 3 Pro maps test traceback to mutation in 2 steps.
+        Gemini 3 Flash, same scaffold, burns 10 retries on the same case.
+      </p>
+      <p style="margin-top:10px">
+        On synth: Qwen 2.5 72B is 65% Easy &rarr; 22% Medium.
+        Drop mirrors reasoning depth required, not architecture.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Agent design &rarr; Efficiency</h3>
+      <ul>
+        <li><strong>Targeted tool calls</strong> - read only relevant function, not full file</li>
+        <li><strong>Dead-end memory</strong> - skip patches already proven to fail</li>
+        <li><strong>Structured retry context</strong> - compact diff, not full traceback resend</li>
+        <li><strong>Planner persona</strong> - primes minimal JSON patch plans</li>
+      </ul>
+      <p class="note" style="margin-top:8px">
+        Outcomes identical to baseline. Cost: 3.1&ndash;3.4&times; less input, 2.5&ndash;2.7&times; less time.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 9: Conclusion -->
+<section>
+  <h2>8. Conclusion &amp; Future Work</h2>
+  <div class="conclusion">
+    <p style="margin-bottom:8px">
+      <strong>Finding 1 - Model quality determines pass rate.</strong>
+      Gap between models dwarfs any agent-level optimization.
+      No retry logic compensates for insufficient reasoning depth on medium/hard.
+    </p>
+    <p style="margin-bottom:8px">
+      <strong>Finding 2 - Agent design determines efficiency.</strong>
+      <strong>3.1&ndash;3.4&times; input-token reduction</strong>,
+      <strong>2.5&ndash;2.7&times; latency improvement</strong>, zero loss in resolution quality.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Finding 3 - Synthetic &ne; OSS difficulty.</strong>
+      57% synth vs &le;33% OSS reveals large-file localization and multi-module context as key unsolved challenges.
+    </p>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Future directions</h3>
+    <ul>
+      <li><strong>AST-guided patch targeting</strong> - eliminate line-offset localization errors</li>
+      <li><strong>Longer retry budgets</strong> with curriculum difficulty scaling</li>
+      <li><strong>Cross-file retrieval (RAG over repo)</strong> for architectural bugs</li>
+      <li><strong>Hard-tier synthetic cases</strong> to bridge gap with OSS complexity</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Slide 10: Demo -->
+<section class="demo-slide">
+  <h1>Demo</h1>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Chart.defaults.devicePixelRatio = 3;
+
+const ML = ["Gemini 3 Pro", "Gemini 3 Flash", "Qwen 2.5 72B (OR)", "Gemma 3 27B"];
+const MC = ["#4285F4", "#34A853", "#FF6D00", "#AB47BC"];
+const MA = ["#4285F488", "#34A85388", "#FF6D0088", "#AB47BC88"];
+
+const factories = {
+  synthPassChart: el => new Chart(el, {
+    type:'bar',
+    data:{
+      labels:['Easy (40)','Medium (9)','Overall (49)'],
+      datasets:[{label:'Pass Rate (%)',data:[65,22,57],backgroundColor:['#4285F4','#FF6D00','#34A853']}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}},
+      plugins:{legend:{display:false}}
+    }
+  }),
+  synthFailChart: el => new Chart(el, {
+    type:'doughnut',
+    data:{labels:['Resolved','Localization Failure','False Resolved','Env Error'],
+      datasets:[{data:[28,17,3,1],backgroundColor:['#1e8e3e','#c5221f','#f9a825','#9e9e9e']}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+  }),
+  ossPassChart: el => new Chart(el, {
+    type:'bar',
+    data:{labels:ML,datasets:[{label:'Pass Rate (%)',data:[33,0,0,0],backgroundColor:MC,borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}},
+      plugins:{legend:{display:false}}
+    }
+  }),
+  inputTokChart: el => new Chart(el, {
+    type:'bar',
+    data:{labels:ML,datasets:[
+      {label:'Our Agent',data:[177794,225784,162039,224344],backgroundColor:MC},
+      {label:'Gemini CLI',data:[588499,695415,557414,715657],backgroundColor:MA,borderColor:MC,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}}}
+  }),
+  outputTokChart: el => new Chart(el, {
+    type:'bar',
+    data:{labels:ML,datasets:[
+      {label:'Our Agent',data:[3343,5454,2294,4553],backgroundColor:MC},
+      {label:'Gemini CLI',data:[8124,12054,5918,10699],backgroundColor:MA,borderColor:MC,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}}}
+  }),
+  latencyChart: el => new Chart(el, {
+    type:'bar',
+    data:{labels:ML,datasets:[
+      {label:'Our Agent',data:[470.3,1059.8,123.2,74.6],backgroundColor:MC},
+      {label:'Gemini CLI',data:[1218.2,2681.2,329.0,203.0],backgroundColor:MA,borderColor:MC,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'s'}}},
+      plugins:{legend:{position:'top'}}
+    }
+  })
+};
+
+const instances = {};
+
+function initSlideCharts(slide){
+  if(!slide) return;
+  slide.querySelectorAll('canvas').forEach(canvas => {
+    const id = canvas.id;
+    if(!instances[id] && factories[id]){
+      requestAnimationFrame(() => {
+        instances[id] = factories[id](canvas);
+      });
+    } else if(instances[id]){
+      requestAnimationFrame(() => instances[id].resize());
+    }
+  });
+}
+
+Reveal.initialize({
+  width: 1280,
+  height: 720,
+  margin: 0.04,
+  hash: true,
+  controls: true,
+  progress: true,
+  transition: 'slide',
+  slideNumber: 'c/t',
+  display: 'block'
+}).then(() => {
+  initSlideCharts(Reveal.getCurrentSlide());
+  Reveal.on('slidechanged', e => initSlideCharts(e.currentSlide));
+});
+</script>
+</body>
+</html>
