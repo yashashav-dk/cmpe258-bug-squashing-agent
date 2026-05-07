@@ -1,0 +1,57 @@
+{
+  "qwen_or": {
+    "resolved": 0,
+    "runs": 3,
+    "pass_rate": 0.0,
+    "avg_latency_ms": 123237.9,
+    "token_usage": {
+      "input": 162039,
+      "output": 2294
+    },
+    "estimated_cost_usd": 0.0593
+  },
+  "gemini3flash": {
+    "resolved": 0,
+    "runs": 3,
+    "pass_rate": 0.0,
+    "avg_latency_ms": 1059775.3,
+    "token_usage": {
+      "input": 225784,
+      "output": 5454
+    },
+    "estimated_cost_usd": 0.0248
+  },
+  "gemini3pro": {
+    "resolved": 1,
+    "runs": 3,
+    "pass_rate": 0.3333333333333333,
+    "avg_latency_ms": 470333.0,
+    "token_usage": {
+      "input": 177794,
+      "output": 3343
+    },
+    "estimated_cost_usd": 0.239
+  },
+  "gemma3": {
+    "resolved": 0,
+    "runs": 3,
+    "pass_rate": 0.0,
+    "avg_latency_ms": 97335.0,
+    "token_usage": {
+      "input": 170253,
+      "output": 3227
+    },
+    "estimated_cost_usd": 0.0173
+  },
+  "gemma3_4b": {
+    "resolved": 0,
+    "runs": 1,
+    "pass_rate": 0.0,
+    "avg_latency_ms": 29335.8,
+    "token_usage": {
+      "input": 54091,
+      "output": 1326
+    },
+    "estimated_cost_usd": 0.0017
+  }
+}

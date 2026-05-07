@@ -1,0 +1,46 @@
+{
+  "gemma3": {
+    "consistency_checks": {
+      "resolved_plus_unresolved_equals_runs": true
+    },
+    "cost_per_successful_fix_usd": null,
+    "estimated_cost_usd": {
+      "input": 0.0170253,
+      "output": 0.0003227,
+      "total": 0.017348
+    },
+    "failure_modes": {
+      "localization_failure": 2
+    },
+    "latency_ms": {
+      "avg": 97334.95466649765,
+      "p50": 95146.23595797457,
+      "p90": 99523.67337502073,
+      "p99": 99523.67337502073
+    },
+    "pass_rate": 0.0,
+    "pass_rate_wilson_95": {
+      "high": 0.6576280471103807,
+      "low": 0.0
+    },
+    "pricing_assumptions": {
+      "input_usd_per_1m": 0.1,
+      "output_usd_per_1m": 0.1,
+      "source": "Static benchmark assumptions in benchmark/protocol.py (USD per 1M input/output tokens)."
+    },
+    "resolved": 0,
+    "retry_depth": {
+      "avg": 10.0,
+      "max": 10
+    },
+    "retry_depth_distribution": {
+      "10": 2
+    },
+    "runs": 2,
+    "token_usage": {
+      "input_tokens": 170253,
+      "output_tokens": 3227
+    },
+    "unresolved": 2
+  }
+}

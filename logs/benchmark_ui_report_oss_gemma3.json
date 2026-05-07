@@ -1,0 +1,167 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "oss_click_int_convert_off_by_one__gemma3__rep0",
+      "case_id": "oss_click_int_convert_off_by_one",
+      "difficulty": "medium",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemma3",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 111383,
+        "total_latency_ms": 96297.34474996803,
+        "total_output_tokens": 1512
+      },
+      "regression_test_exit_code": 1,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T144504Z_6114ca5b",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "type_coercion",
+        "off_by_one"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 99523.67337502073
+    },
+    {
+      "attempt_id": "oss_click_parser_prefixes_truncated__gemma3__rep0",
+      "case_id": "oss_click_parser_prefixes_truncated",
+      "difficulty": "hard",
+      "error": "402 Client Error: Payment Required for url: https://openrouter.ai/api/v1/chat/completions",
+      "failure_mode": "environment_error",
+      "model": "gemma3",
+      "planner_stats": {},
+      "regression_test_exit_code": null,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T144504Z_6114ca5b",
+      "source_type": "historical",
+      "status": "error",
+      "tags": [
+        "oss",
+        "click",
+        "parser",
+        "logic"
+      ],
+      "target_test_exit_code": null,
+      "wall_time_ms": null
+    },
+    {
+      "attempt_id": "oss_click_split_arg_upper__gemma3__rep0",
+      "case_id": "oss_click_split_arg_upper",
+      "difficulty": "easy",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemma3",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 58870,
+        "total_latency_ms": 92929.39595796634,
+        "total_output_tokens": 1715
+      },
+      "regression_test_exit_code": 2,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T144504Z_6114ca5b",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "string_handling",
+        "shell_completion"
+      ],
+      "target_test_exit_code": 4,
+      "wall_time_ms": 95146.23595797457
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "oss_click_int_convert_off_by_one",
+      "difficulty": "medium",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "type_coercion",
+        "off_by_one"
+      ]
+    },
+    {
+      "case_id": "oss_click_parser_prefixes_truncated",
+      "difficulty": "hard",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "parser",
+        "logic"
+      ]
+    },
+    {
+      "case_id": "oss_click_split_arg_upper",
+      "difficulty": "easy",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "string_handling",
+        "shell_completion"
+      ]
+    }
+  ],
+  "matrix": {
+    "gemma3": {
+      "oss_click_int_convert_off_by_one": {
+        "attempt_id": "oss_click_int_convert_off_by_one__gemma3__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      },
+      "oss_click_parser_prefixes_truncated": {
+        "attempt_id": "oss_click_parser_prefixes_truncated__gemma3__rep0",
+        "failure_mode": "environment_error",
+        "resolved": false,
+        "status": "error"
+      },
+      "oss_click_split_arg_upper": {
+        "attempt_id": "oss_click_split_arg_upper__gemma3__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      }
+    }
+  },
+  "models": [
+    {
+      "error_runs": 1,
+      "failure_modes": {
+        "environment_error": 1,
+        "localization_failure": 2
+      },
+      "latency_ms": {
+        "avg": 97334.95466649765,
+        "p50": 95146.23595797457,
+        "p90": 99523.67337502073,
+        "p99": 99523.67337502073
+      },
+      "model": "gemma3",
+      "pass_rate": 0.0,
+      "resolved": 0,
+      "runs": 3,
+      "unresolved": 3
+    }
+  ],
+  "run": {
+    "manifest_path": "/Users/spartan/Projects/cmpe258-bug-squashing-agent/benchmark/manifests/oss_pilot.jsonl",
+    "results_path": "/Users/spartan/Projects/cmpe258-bug-squashing-agent/logs/oss_results_gemma3.jsonl",
+    "run_id": "20260507T144504Z_6114ca5b"
+  }
+}

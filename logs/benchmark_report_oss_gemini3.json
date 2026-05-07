@@ -1,0 +1,92 @@
+{
+  "gemini3flash": {
+    "consistency_checks": {
+      "resolved_plus_unresolved_equals_runs": true
+    },
+    "cost_per_successful_fix_usd": null,
+    "estimated_cost_usd": {
+      "input": 0.022578400000000002,
+      "output": 0.0021816,
+      "total": 0.02476
+    },
+    "failure_modes": {
+      "localization_failure": 3
+    },
+    "latency_ms": {
+      "avg": 1059775.3401666607,
+      "p50": 1074070.801416994,
+      "p90": 1127932.7742499881,
+      "p99": 1127932.7742499881
+    },
+    "pass_rate": 0.0,
+    "pass_rate_wilson_95": {
+      "high": 0.5615060804490177,
+      "low": 0.0
+    },
+    "pricing_assumptions": {
+      "input_usd_per_1m": 0.1,
+      "output_usd_per_1m": 0.4,
+      "source": "Static benchmark assumptions in benchmark/protocol.py (USD per 1M input/output tokens)."
+    },
+    "resolved": 0,
+    "retry_depth": {
+      "avg": 10.0,
+      "max": 10
+    },
+    "retry_depth_distribution": {
+      "10": 3
+    },
+    "runs": 3,
+    "token_usage": {
+      "input_tokens": 225784,
+      "output_tokens": 5454
+    },
+    "unresolved": 3
+  },
+  "gemini3pro": {
+    "consistency_checks": {
+      "resolved_plus_unresolved_equals_runs": true
+    },
+    "cost_per_successful_fix_usd": 0.23895750000000002,
+    "estimated_cost_usd": {
+      "input": 0.2222425,
+      "output": 0.016715,
+      "total": 0.23895750000000002
+    },
+    "failure_modes": {
+      "localization_failure": 2,
+      "none": 1
+    },
+    "latency_ms": {
+      "avg": 470332.961166685,
+      "p50": 608367.3875000095,
+      "p90": 683442.1403330052,
+      "p99": 683442.1403330052
+    },
+    "pass_rate": 0.3333333333333333,
+    "pass_rate_wilson_95": {
+      "high": 0.7923450448735121,
+      "low": 0.0614903152761605
+    },
+    "pricing_assumptions": {
+      "input_usd_per_1m": 1.25,
+      "output_usd_per_1m": 5.0,
+      "source": "Static benchmark assumptions in benchmark/protocol.py (USD per 1M input/output tokens)."
+    },
+    "resolved": 1,
+    "retry_depth": {
+      "avg": 7.333333333333333,
+      "max": 10
+    },
+    "retry_depth_distribution": {
+      "10": 2,
+      "2": 1
+    },
+    "runs": 3,
+    "token_usage": {
+      "input_tokens": 177794,
+      "output_tokens": 3343
+    },
+    "unresolved": 2
+  }
+}

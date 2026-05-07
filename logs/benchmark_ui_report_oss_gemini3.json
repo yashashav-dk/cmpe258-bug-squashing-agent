@@ -1,0 +1,297 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "oss_click_int_convert_off_by_one__gemini3flash__rep0",
+      "case_id": "oss_click_int_convert_off_by_one",
+      "difficulty": "medium",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemini3flash",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 109361,
+        "total_latency_ms": 973481.1212930363,
+        "total_output_tokens": 913
+      },
+      "regression_test_exit_code": 1,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "type_coercion",
+        "off_by_one"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 977322.4448330002
+    },
+    {
+      "attempt_id": "oss_click_int_convert_off_by_one__gemini3pro__rep0",
+      "case_id": "oss_click_int_convert_off_by_one",
+      "difficulty": "medium",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemini3pro",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 108006,
+        "total_latency_ms": 606154.3684570352,
+        "total_output_tokens": 1164
+      },
+      "regression_test_exit_code": 0,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "type_coercion",
+        "off_by_one"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 608367.3875000095
+    },
+    {
+      "attempt_id": "oss_click_parser_prefixes_truncated__gemini3flash__rep0",
+      "case_id": "oss_click_parser_prefixes_truncated",
+      "difficulty": "hard",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemini3flash",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 55232,
+        "total_latency_ms": 1072086.066210235,
+        "total_output_tokens": 1324
+      },
+      "regression_test_exit_code": 1,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "parser",
+        "logic"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 1074070.801416994
+    },
+    {
+      "attempt_id": "oss_click_parser_prefixes_truncated__gemini3pro__rep0",
+      "case_id": "oss_click_parser_prefixes_truncated",
+      "difficulty": "hard",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemini3pro",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 57747,
+        "total_latency_ms": 681688.2274179952,
+        "total_output_tokens": 1898
+      },
+      "regression_test_exit_code": 1,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "parser",
+        "logic"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 683442.1403330052
+    },
+    {
+      "attempt_id": "oss_click_split_arg_upper__gemini3flash__rep0",
+      "case_id": "oss_click_split_arg_upper",
+      "difficulty": "easy",
+      "error": null,
+      "failure_mode": "localization_failure",
+      "model": "gemini3flash",
+      "planner_stats": {
+        "steps": 10,
+        "tool_calls": 0,
+        "total_input_tokens": 61191,
+        "total_latency_ms": 1123443.7795419362,
+        "total_output_tokens": 3217
+      },
+      "regression_test_exit_code": 1,
+      "repetition": 0,
+      "resolved": false,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "string_handling",
+        "shell_completion"
+      ],
+      "target_test_exit_code": 1,
+      "wall_time_ms": 1127932.7742499881
+    },
+    {
+      "attempt_id": "oss_click_split_arg_upper__gemini3pro__rep0",
+      "case_id": "oss_click_split_arg_upper",
+      "difficulty": "easy",
+      "error": null,
+      "failure_mode": "none",
+      "model": "gemini3pro",
+      "planner_stats": {
+        "steps": 2,
+        "tool_calls": 0,
+        "total_input_tokens": 12041,
+        "total_latency_ms": 115595.51887499401,
+        "total_output_tokens": 281
+      },
+      "regression_test_exit_code": 0,
+      "repetition": 0,
+      "resolved": true,
+      "run_id": "20260507T140119Z_7afc943d",
+      "source_type": "historical",
+      "status": "completed",
+      "tags": [
+        "oss",
+        "click",
+        "string_handling",
+        "shell_completion"
+      ],
+      "target_test_exit_code": 0,
+      "wall_time_ms": 119189.35566704022
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "oss_click_int_convert_off_by_one",
+      "difficulty": "medium",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "type_coercion",
+        "off_by_one"
+      ]
+    },
+    {
+      "case_id": "oss_click_parser_prefixes_truncated",
+      "difficulty": "hard",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "parser",
+        "logic"
+      ]
+    },
+    {
+      "case_id": "oss_click_split_arg_upper",
+      "difficulty": "easy",
+      "source_type": "historical",
+      "tags": [
+        "oss",
+        "click",
+        "string_handling",
+        "shell_completion"
+      ]
+    }
+  ],
+  "matrix": {
+    "gemini3flash": {
+      "oss_click_int_convert_off_by_one": {
+        "attempt_id": "oss_click_int_convert_off_by_one__gemini3flash__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      },
+      "oss_click_parser_prefixes_truncated": {
+        "attempt_id": "oss_click_parser_prefixes_truncated__gemini3flash__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      },
+      "oss_click_split_arg_upper": {
+        "attempt_id": "oss_click_split_arg_upper__gemini3flash__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      }
+    },
+    "gemini3pro": {
+      "oss_click_int_convert_off_by_one": {
+        "attempt_id": "oss_click_int_convert_off_by_one__gemini3pro__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      },
+      "oss_click_parser_prefixes_truncated": {
+        "attempt_id": "oss_click_parser_prefixes_truncated__gemini3pro__rep0",
+        "failure_mode": "localization_failure",
+        "resolved": false,
+        "status": "completed"
+      },
+      "oss_click_split_arg_upper": {
+        "attempt_id": "oss_click_split_arg_upper__gemini3pro__rep0",
+        "failure_mode": "none",
+        "resolved": true,
+        "status": "completed"
+      }
+    }
+  },
+  "models": [
+    {
+      "error_runs": 0,
+      "failure_modes": {
+        "localization_failure": 3
+      },
+      "latency_ms": {
+        "avg": 1059775.3401666607,
+        "p50": 1074070.801416994,
+        "p90": 1127932.7742499881,
+        "p99": 1127932.7742499881
+      },
+      "model": "gemini3flash",
+      "pass_rate": 0.0,
+      "resolved": 0,
+      "runs": 3,
+      "unresolved": 3
+    },
+    {
+      "error_runs": 0,
+      "failure_modes": {
+        "localization_failure": 2,
+        "none": 1
+      },
+      "latency_ms": {
+        "avg": 470332.961166685,
+        "p50": 608367.3875000095,
+        "p90": 683442.1403330052,
+        "p99": 683442.1403330052
+      },
+      "model": "gemini3pro",
+      "pass_rate": 0.3333333333333333,
+      "resolved": 1,
+      "runs": 3,
+      "unresolved": 2
+    }
+  ],
+  "run": {
+    "manifest_path": "/Users/spartan/Projects/cmpe258-bug-squashing-agent/benchmark/manifests/oss_pilot.jsonl",
+    "results_path": "/Users/spartan/Projects/cmpe258-bug-squashing-agent/logs/oss_results_gemini3.jsonl",
+    "run_id": "20260507T140119Z_7afc943d"
+  }
+}
